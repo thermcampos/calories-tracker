@@ -79,6 +79,7 @@ export const foodDatabase: FoodItem[] = [
   { name: 'Barra de castanhas, amendoim e frutas Nuts', nameEn: 'Nuts, peanuts and fruits bar', info: { calories: 470, protein: 16, fat: 30, carbs: 34, fiber: 12, category: 'carbs', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Barra de caramelo e chocolate Bold', nameEn: 'Caramelo and chocolate bar Bold', info: { calories: 348, protein: 30, fat: 16, carbs: 28, fiber: 10, category: 'carbs', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Brownie proteico double chocolate Belive', nameEn: 'Protein Brownie double chocolate Belive', info: { calories: 305, protein: 15, fat: 18, carbs: 33, fiber: 13, category: 'carbs', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
+  { name: 'Proto bar Paçoca Amendo Whey, Nutrata', nameEn: 'Protein bar peanuts Whey, Nutrata', info: { calories: 467, protein: 31.4, fat: 22.8, carbs: 31.4, fiber: 5, category: 'carbs', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
 
   // Folhas e verduras - Leaves
   { name: 'Agrião', nameEn: 'Watercress', info: { calories: 17, protein: 2.7, fat: 0.2, carbs: 2.3, fiber: 2.1, category: 'leaves', alkaline: true, bestFor: ['lunch', 'dinner'] } },
