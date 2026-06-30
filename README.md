@@ -1,3 +1,7 @@
+# Archived repo
+
+The new content can be found in Gitea: https://lightroasted.vps-kinghost.net/rmcampos/calories-tracker
+
 # 🍽️ Calories Tracker
 
 A modern, responsive web application for tracking daily food intake, calories, and nutritional information. Built with TypeScript, Vite, and Appwrite for a seamless food logging experience.
