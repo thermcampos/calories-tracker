@@ -47,23 +47,23 @@ jobs:
       run: npm run build
 
     - name: Install rsync + ssh client
-        run: apt-get update -qq && apt-get install -y -qq rsync openssh-client
+      run: apt-get update -qq && apt-get install -y -qq rsync openssh-client
 
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+    - name: Configure SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Ensure destination folder exists
-        run: |
-          ssh -i ~/.ssh/deploy_key deploy@${{ secrets.DEPLOY_HOST }} \
-            "mkdir -p /srv/sites/${{ env.APP_FOLDER }} && chmod 755 /srv/sites/${{ env.APP_FOLDER }}"
+    - name: Ensure destination folder exists
+      run: |
+        ssh -i ~/.ssh/deploy_key deploy@${{ secrets.DEPLOY_HOST }} \
+          "mkdir -p /srv/sites/${{ env.APP_FOLDER }} && chmod 755 /srv/sites/${{ env.APP_FOLDER }}"
 
-      - name: Upload site
-        run: |
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key" \
-            ./dist/ deploy@${{ secrets.DEPLOY_HOST }}:/srv/sites/${{ env.APP_FOLDER }}/
+    - name: Upload site
+      run: |
+        rsync -avz --delete \
+          -e "ssh -i ~/.ssh/deploy_key" \
+          ./dist/ deploy@${{ secrets.DEPLOY_HOST }}:/srv/sites/${{ env.APP_FOLDER }}/
 
