@@ -1,8 +1,12 @@
+![Calories Tracker](https://img.shields.io/badge/status-active-brightgreen) ![Version](https://img.shields.io/badge/version-1.0.0-blue) ![License](https://img.shields.io/badge/license-ISC-orange)
+
 # 🍽️ Calories Tracker
 
 A modern, responsive web application for tracking daily food intake, calories, and nutritional information. Built with TypeScript, Vite, and Appwrite for a seamless food logging experience.
 
-![Calories Tracker](https://img.shields.io/badge/status-active-brightgreen) ![Version](https://img.shields.io/badge/version-1.0.0-blue) ![License](https://img.shields.io/badge/license-ISC-orange)
+## Live
+
+https://calories-tracker.lightroasted.vps-kinghost.net
 
 ## ✨ Features
 
@@ -72,7 +76,7 @@ VITE_APPWRITE_USERSETTINGSID=your_user_settings_collection_id
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/calories-tracker.git
+   git clone https://lightroasted.vps-kinghost.net/rmcampos/calories-tracker.git
    cd calories-tracker
    ```
 
