@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Suggestions based in the latest two days records in the last and next 2 hours.
 - AGENTS.md file covering the app for better LLM integration.
 - User settings option to disable suggestions to be loaded when the app starts.
+- Category tag in the suggested foods.
 
 ### Changed
 - Suggestions panel to be dismissible and clickable.

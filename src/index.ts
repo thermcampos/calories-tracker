@@ -611,8 +611,20 @@ function renderSuggestionCard(entry: any): HTMLElement {
   card.className = 'suggestion-card';
   card.setAttribute('data-suggestion-id', entry.$id);
 
+  // Look up food category from the local database
+  let category = '';
+  try {
+    const foodItem = getFoodItemByName(entry.name);
+    category = foodItem.info.category;
+  } catch {
+    category = '';
+  }
+
+  const categoryBadge = category ? `<span class="suggestion-category">${category}</span>` : '';
+
   card.innerHTML = `
-    <div class="suggestion-info">
+    <div class="suggestion-main">
+      ${categoryBadge}
       <div class="suggestion-name">${entry.name}</div>
       <div class="suggestion-meta">${entry.grams}g • ${entry.calories} cal • ${entry.time}</div>
     </div>
@@ -1326,6 +1338,23 @@ const setupEventListeners = () => {
       closeMobileMenu();
     }
   });
+
+  // Logo click to reload app
+  document.getElementById('appLogo')?.addEventListener('click', handleReloadApp);
+}
+
+async function handleReloadApp() {
+  if (!currentUser) return;
+  
+  try {
+    showLoading();
+    await initTimezone();
+    await selectDate(selectedDate);
+  } catch (error) {
+    console.error('Logo reload failed:', error);
+  } finally {
+    hideLoading();
+  }
 }
 
 function performSearch(query: string) {

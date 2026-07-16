@@ -1355,13 +1355,39 @@ label {
 .suggestion-info {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.suggestion-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.suggestion-category {
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #4A2E5A;
+    color: white;
+    flex-shrink: 0;
+    margin-bottom: 8px;
 }
 
 .suggestion-name {
     font-size: 0.95rem;
     font-weight: 600;
     color: #e0e0e0;
-    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
 }
 
 .suggestion-meta {
@@ -1423,14 +1449,23 @@ label {
 
 @media (max-width: 768px) {
     .suggestion-card {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-wrap: wrap;
         gap: 10px;
+    }
+
+    .suggestion-main {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .suggestion-category {
+        order: 0;
     }
 
     .suggestion-actions {
         width: 100%;
         justify-content: stretch;
+        order: 3;
     }
 
     .btn-suggestion-select,
