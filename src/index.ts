@@ -43,6 +43,15 @@ type AlternativeResult = {
 
 let currentAlternatives: AlternativeResult[] = [];
 
+// Track dismissed suggestion IDs so they don't reappear immediately
+let dismissedSuggestions: Set<string> = new Set();
+
+// Helper: parse "HH:MM" to total minutes since midnight
+function timeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', async function() {
   await initializeAuth();
@@ -459,6 +468,128 @@ function clearAppData() {
   selectedFood = null;
   getButtonById('cancel-food-btn').style.display = 'none';
 }
+
+// ---- Smart Suggestions ----
+
+// Fetch entries from the last 2 days and filter by time window
+async function loadSmartSuggestions() {
+  if (!currentUser) return;
+
+  const suggestionsList = getDivById('suggestionsList');
+  const suggestionsEmpty = getDivById('suggestionsEmpty');
+  suggestionsList.innerHTML = '';
+  suggestionsEmpty.classList.remove('show');
+
+  try {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const windowStart = currentMinutes - 120;
+    const windowEnd = currentMinutes + 120;
+
+    // Build start/end dates for the last 2 days (excluding today)
+    const endDate = new Date(now);
+    endDate.setDate(now.getDate() - 1);
+    const startDate = new Date(now);
+    startDate.setDate(now.getDate() - 2);
+
+    const entries = await AppwriteDB.getFoodEntriesForDateRange(startDate, endDate);
+
+    if (!entries || entries.length === 0) {
+      suggestionsEmpty.classList.add('show');
+      return;
+    }
+
+    // Filter by time window and deduplicate by food name (keep most recent)
+    const seen = new Map<string, any>();
+    entries.forEach((entry: any) => {
+      if (!entry.time) return;
+      const entryMinutes = timeToMinutes(entry.time);
+      const inWindow = entryMinutes >= windowStart && entryMinutes <= windowEnd;
+      if (!inWindow) return;
+      if (dismissedSuggestions.has(entry.$id)) return;
+
+      const existing = seen.get(entry.name);
+      if (!existing || entry.$createdAt > existing.$createdAt) {
+        seen.set(entry.name, entry);
+      }
+    });
+
+    const suggestions = Array.from(seen.values());
+
+    if (suggestions.length === 0) {
+      suggestionsEmpty.classList.add('show');
+      return;
+    }
+
+    suggestions.forEach((entry: any) => {
+      const card = renderSuggestionCard(entry);
+      suggestionsList.appendChild(card);
+    });
+  } catch (error) {
+    console.error('Load smart suggestions error:', error);
+    suggestionsEmpty.classList.add('show');
+  }
+}
+
+// Render a single suggestion card
+function renderSuggestionCard(entry: any): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'suggestion-card';
+  card.setAttribute('data-suggestion-id', entry.$id);
+
+  card.innerHTML = `
+    <div class="suggestion-info">
+      <div class="suggestion-name">${entry.name}</div>
+      <div class="suggestion-meta">${entry.grams}g • ${entry.calories} cal • ${entry.time}</div>
+    </div>
+    <div class="suggestion-actions">
+      <button class="btn-suggestion-select" data-food-name="${entry.name}" data-food-grams="${entry.grams}">Select</button>
+      <button class="btn-suggestion-dismiss" data-suggestion-id="${entry.$id}">Dismiss</button>
+    </div>
+  `;
+
+  // Select button: fill form and scroll to it
+  const selectBtn = card.querySelector('.btn-suggestion-select') as HTMLButtonElement;
+  selectBtn.addEventListener('click', () => {
+    const foodName = selectBtn.getAttribute('data-food-name');
+    const foodGrams = selectBtn.getAttribute('data-food-grams');
+    if (!foodName) return;
+    try {
+      const foodItem = getFoodItemByName(foodName);
+      selectFood(foodItem);
+      if (foodGrams) {
+        getInputById('gramAmount').value = foodGrams;
+        previewCalories(foodItem);
+      }
+      // Scroll to form
+      const addFoodSection = document.querySelector('.add-food-section') as HTMLElement;
+      if (addFoodSection) {
+        addFoodSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } catch (e) {
+      console.error('Suggestion select error:', e);
+    }
+  });
+
+  // Dismiss button: remove card and track dismissal
+  const dismissBtn = card.querySelector('.btn-suggestion-dismiss') as HTMLButtonElement;
+  dismissBtn.addEventListener('click', () => {
+    const suggestionId = dismissBtn.getAttribute('data-suggestion-id');
+    if (suggestionId) {
+      dismissedSuggestions.add(suggestionId);
+    }
+    card.remove();
+    // If no cards left, show empty state
+    const suggestionsList = getDivById('suggestionsList');
+    if (suggestionsList.children.length === 0) {
+      getDivById('suggestionsEmpty').classList.add('show');
+    }
+  });
+
+  return card;
+}
+
+// ---- End Smart Suggestions ----
 
 const getFoodData = (grams: number, foodData: FoodItem): FoodItem => {
   const multiplier = grams / 100; // Database values are per 100g
@@ -2087,6 +2218,7 @@ const selectDate = async (date: Date) => {
   selectedDate = date;
   updateCurrentDate();
   await loadFoodEntries(date);
+  await loadSmartSuggestions();
   await fetchCaloriesCurrentMonth();
   renderCalendar();
 }

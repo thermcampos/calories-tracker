@@ -68,5 +68,10 @@ export default defineConfig({
         type: 'module'
       }
     })
-  ]
+  ],
+  server: {
+    ...(process.env.VITE_NGROK && {
+      allowedHosts: ['.ngrok-free.dev']
+    })
+  },
 })

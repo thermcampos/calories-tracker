@@ -140,6 +140,31 @@ export class AppwriteDB {
     }
   }
 
+  // Get user's food entries for a date range (last N days)
+  static async getFoodEntriesForDateRange(startDate: Date, endDate: Date) {
+    try {
+      const user = await account.get();
+      const startLocal = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString();
+      const endLocal = new Date(endDate.getTime() - (endDate.getTimezoneOffset() * 60000)).toISOString();
+
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        FOOD_ENTRIES_COLLECTION_ID,
+        [
+          Query.equal('userId', user.$id),
+          Query.greaterThanEqual('date', startLocal.split('T')[0]),
+          Query.lessThanEqual('date', endLocal.split('T')[0]),
+          Query.limit(100)
+        ]
+      );
+      console.debug('Food entries retrieved for range:', response);
+      return response.documents;
+    } catch (error) {
+      console.error('Get food entries for range error:', error);
+      throw error;
+    }
+  }
+
   // Get user's food entries for a specific date
   static async getFoodEntries(date: Date) {
     try {

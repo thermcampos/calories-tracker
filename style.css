@@ -1261,3 +1261,130 @@ label {
     padding: 10px 0;
     font-style: italic;
 }
+
+/* Suggestions Section */
+.suggestions-section {
+    background: #2a2a2a;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.suggestions-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #b0b0b0;
+    margin: 0 0 15px 0;
+    text-align: center;
+}
+
+.suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.suggestion-card {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #404040;
+    transition: all 0.2s ease;
+}
+
+.suggestion-card:hover {
+    border-color: #6B8DD6;
+}
+
+.suggestion-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.suggestion-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 2px;
+}
+
+.suggestion-meta {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.suggestion-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.btn-suggestion-select {
+    padding: 6px 14px;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-suggestion-select:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+}
+
+.btn-suggestion-dismiss {
+    padding: 6px 14px;
+    background: #404040;
+    color: #ccc;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-suggestion-dismiss:hover {
+    background: #555;
+    color: #fff;
+}
+
+.suggestions-empty {
+    text-align: center;
+    padding: 12px 0;
+    font-size: 0.9rem;
+    color: #666;
+    display: none;
+}
+
+.suggestions-empty.show {
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .suggestion-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .suggestion-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .btn-suggestion-select,
+    .btn-suggestion-dismiss {
+        flex: 1;
+        text-align: center;
+    }
+}
