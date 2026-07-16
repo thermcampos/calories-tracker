@@ -46,6 +46,12 @@ let currentAlternatives: AlternativeResult[] = [];
 // Track dismissed suggestion IDs so they don't reappear immediately
 let dismissedSuggestions: Set<string> = new Set();
 
+// Track whether suggestions panel is currently dismissed
+let isSuggestionsDismissed = false;
+
+// User preference for auto-loading suggestions
+let autoLoadSuggestions = true;
+
 // Helper: parse "HH:MM" to total minutes since midnight
 function timeToMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(':').map(Number);
@@ -64,8 +70,10 @@ async function initTimezone() {
     const allDocs = await AppwriteDB.getUserSettings();
     const globalSettings = allDocs.find((d: any) => !d.goalName);
     appState.userTimezone = globalSettings?.timezone ?? '';
+    autoLoadSuggestions = globalSettings?.autoLoadSuggestions ?? true;
   } catch {
     appState.userTimezone = '';
+    autoLoadSuggestions = true;
   }
   const result = await getCurrentDate(appState.userTimezone);
   selectedDate = result.dateTime;
@@ -227,6 +235,7 @@ async function handleSaveSettings(e: SubmitEvent) {
     const bmi = getInputById('bmi').value;
     const bmiResult = getInputById('bmiResult');
     const timezone = getInputById('timezone').value;
+    const autoLoadSuggestionsCheckbox = document.getElementById('autoLoadSuggestions') as HTMLInputElement;
 
     const metricsData = {
       bodyWeight: bodyWeight ? parseFloat(bodyWeight) : undefined,
@@ -234,6 +243,7 @@ async function handleSaveSettings(e: SubmitEvent) {
       bmi: bmi ? parseFloat(bmi) : undefined,
       bmiResult: bmiResult ? bmiResult.value : undefined,
       timezone: timezone || undefined,
+      autoLoadSuggestions: autoLoadSuggestionsCheckbox?.checked ?? true,
     };
 
     // Find existing global settings doc (no goalName) and update it, or create new one
@@ -346,12 +356,22 @@ async function toggleSettingsView() {
         getInputById('bmi').value = globalSettings.bmi ?? '';
         getInputById('bmiResult').value = globalSettings.bmiResult ?? '';
         (document.getElementById('timezone') as HTMLSelectElement).value = globalSettings.timezone ?? '';
+        const autoLoadSuggestionsCheckbox = document.getElementById('autoLoadSuggestions') as HTMLInputElement;
+        if (autoLoadSuggestionsCheckbox) {
+          autoLoadSuggestionsCheckbox.checked = globalSettings.autoLoadSuggestions ?? true;
+        }
+        autoLoadSuggestions = globalSettings.autoLoadSuggestions ?? true;
       } else {
         getInputById('bodyWeight').value = '';
         getInputById('height').value = '';
         getInputById('bmi').value = '';
         getInputById('bmiResult').value = '';
         (document.getElementById('timezone') as HTMLSelectElement).value = '';
+        const autoLoadSuggestionsCheckbox = document.getElementById('autoLoadSuggestions') as HTMLInputElement;
+        if (autoLoadSuggestionsCheckbox) {
+          autoLoadSuggestionsCheckbox.checked = true;
+        }
+        autoLoadSuggestions = true;
       }
 
       const goals: UserSettings[] = allDocs
@@ -475,8 +495,18 @@ function clearAppData() {
 async function loadSmartSuggestions() {
   if (!currentUser) return;
 
+  // Don't load if user has dismissed the panel
+  if (isSuggestionsDismissed) return;
+
+  const suggestionsSection = getDivById('suggestionsSection');
   const suggestionsList = getDivById('suggestionsList');
   const suggestionsEmpty = getDivById('suggestionsEmpty');
+  const loadBtn = getButtonById('loadSuggestionsBtn');
+  
+  // Show the suggestions section, hide the load button
+  suggestionsSection.classList.remove('hidden');
+  loadBtn.classList.add('hidden');
+  
   suggestionsList.innerHTML = '';
   suggestionsEmpty.classList.remove('show');
 
@@ -587,6 +617,23 @@ function renderSuggestionCard(entry: any): HTMLElement {
   });
 
   return card;
+}
+
+// Dismiss entire suggestions panel
+function dismissSuggestionsPanel() {
+  isSuggestionsDismissed = true;
+  const suggestionsSection = getDivById('suggestionsSection');
+  const loadBtn = getButtonById('loadSuggestionsBtn');
+  
+  // Hide the entire section, show the load button
+  suggestionsSection.classList.add('hidden');
+  loadBtn.classList.remove('hidden');
+}
+
+// Load suggestions when user clicks the button
+async function handleLoadSuggestions() {
+  isSuggestionsDismissed = false;
+  await loadSmartSuggestions();
 }
 
 // ---- End Smart Suggestions ----
@@ -1110,6 +1157,10 @@ const setupEventListeners = () => {
 
   // Alternatives checkbox
   document.getElementById('enableAlternatives')?.addEventListener('change', handleAlternativesCheckboxChange);
+
+  // Suggestions panel buttons
+  getButtonById('dismissSuggestionsBtn')?.addEventListener('click', dismissSuggestionsPanel);
+  getButtonById('loadSuggestionsBtn')?.addEventListener('click', handleLoadSuggestions);
 
   // Share button event listeners
   getButtonById('shareBtn').addEventListener('click', handleShareClick);
@@ -2218,7 +2269,9 @@ const selectDate = async (date: Date) => {
   selectedDate = date;
   updateCurrentDate();
   await loadFoodEntries(date);
-  await loadSmartSuggestions();
+  if (autoLoadSuggestions && !isSuggestionsDismissed) {
+    await loadSmartSuggestions();
+  }
   await fetchCaloriesCurrentMonth();
   renderCalendar();
 }

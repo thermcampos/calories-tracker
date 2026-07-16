@@ -34,6 +34,7 @@ export type UserSettings = {
   goalName?: string;
   isActive?: boolean;
   timezone?: string;
+  autoLoadSuggestions?: boolean;
 };
 
 export type DailyTotalCalories = {

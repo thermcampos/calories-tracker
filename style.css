@@ -1271,12 +1271,63 @@ label {
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
 }
 
+.suggestions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
 .suggestions-title {
     font-size: 1.1rem;
     font-weight: 600;
     color: #b0b0b0;
-    margin: 0 0 15px 0;
-    text-align: center;
+    margin: 0;
+}
+
+.btn-dismiss-suggestions {
+    background: transparent;
+    border: none;
+    color: #999;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.btn-dismiss-suggestions:hover {
+    background: #404040;
+    color: #fff;
+}
+
+.btn-load-suggestions {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #6B8DD6, #8E99F3);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(107, 141, 214, 0.2);
+}
+
+.btn-load-suggestions:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(107, 141, 214, 0.4);
+}
+
+.btn-load-suggestions.hidden {
+    display: none;
+}
+
+.suggestions-section.hidden {
+    display: none;
 }
 
 .suggestions-list {
