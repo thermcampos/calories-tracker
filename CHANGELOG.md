@@ -16,3 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Suggestions panel to be dismissible and clickable.
+- Rotated Anthropic SDK API Key
+
+### Fixed
+- Lint issues that AI generated and did not fix.

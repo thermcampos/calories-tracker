@@ -3,7 +3,7 @@ type FoodCategory = 'fats' | 'proteins' | 'carbs' | 'leaves' | 'fruits' | 'low c
 export type FoodItem = {
   name: string;
   nameEn: string;
-  info: { calories: number, protein: number, fat: number, carbs: number, fiber: number, category: FoodCategory, alkaline: boolean, bestFor: Array<String> }
+  info: { calories: number, protein: number, fat: number, carbs: number, fiber: number, category: FoodCategory, alkaline: boolean, bestFor: string[] }
 }
 
 export type FoodStorage = {
@@ -64,4 +64,9 @@ export type MealGroup = {
   totalFat: number;
   totalCarbs: number;
   isExpanded: boolean;
+};
+
+export type AlternativeResult = {
+  food: FoodItem;
+  quantityGrams: number;
 };

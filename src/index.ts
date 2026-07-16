@@ -1,9 +1,37 @@
 import { foodDatabase } from './foodDatabase.js';
-import { getButtonById, getButtonListByClassName, getDivById, getInputById, showFoodPreview } from './DomUtils';
-import { DailyTotalCalories, FoodItem, FoodStorage, MealGroup, MealPeriod, UserSettings } from './types.js';
+import {
+  getButtonById,
+  getButtonListByClassName,
+  getDivById,
+  getInputById,
+  showFoodPreview,
+} from './DomUtils';
+import {
+  AlternativeResult,
+  DailyTotalCalories,
+  FoodItem,
+  FoodStorage,
+  MealGroup,
+  MealPeriod,
+  UserSettings,
+} from './types.js';
 import { AppwriteAuth, AppwriteDB } from './appwrite.js';
 import swal from 'sweetalert';
-import { closeMobileMenu, delay, getCleanName, getIcon, handleMobileCalendarClick, hideLoading, hideSearchResults, navigateResultsKeyboard, QUICK_DELAY, scrollToCalendarView, showLoading, toggleCardHandler, toggleMobileMenu } from './Utils';
+import {
+  closeMobileMenu,
+  delay,
+  getCleanName,
+  getIcon,
+  handleMobileCalendarClick,
+  hideLoading,
+  hideSearchResults,
+  navigateResultsKeyboard,
+  QUICK_DELAY,
+  scrollToCalendarView,
+  showLoading,
+  toggleCardHandler,
+  toggleMobileMenu,
+} from './Utils';
 import { showAuthForms, toggleAuthForms, showRegisterForm, showLoginForm, hideAuthForms, closeAuthModal } from './auth';
 import { appState } from "./state";
 import { getNutritionInfo, NutritionInfo, clearNutritionCache, getCacheStats } from './claudeService';
@@ -35,11 +63,6 @@ let selectedDate = new Date();
 let currentViewDate = new Date();
 let selectedFood: FoodItem | null = null; // review here
 let currentUser: any | null = null;
-
-type AlternativeResult = {
-  food: FoodItem;
-  quantityGrams: number;
-};
 
 let currentAlternatives: AlternativeResult[] = [];
 
@@ -75,10 +98,31 @@ async function initTimezone() {
     appState.userTimezone = '';
     autoLoadSuggestions = true;
   }
+  
+  // Initialize suggestions panel visibility based on auto-load preference
+  initializeSuggestionsPanel();
+  
   const result = await getCurrentDate(appState.userTimezone);
   selectedDate = result.dateTime;
   currentViewDate = result.dateTime;
   appState.todayDateString = result.date;
+}
+
+function initializeSuggestionsPanel() {
+  const suggestionsSection = getDivById('suggestionsSection');
+  const loadBtn = getButtonById('loadSuggestionsBtn');
+  
+  if (!autoLoadSuggestions) {
+    // Auto-load disabled: hide panel, show load button
+    suggestionsSection.classList.add('hidden');
+    loadBtn.classList.remove('hidden');
+    isSuggestionsDismissed = true;
+  } else {
+    // Auto-load enabled: show panel, hide load button
+    suggestionsSection.classList.remove('hidden');
+    loadBtn.classList.add('hidden');
+    isSuggestionsDismissed = false;
+  }
 }
 
 async function initializeAuth() {
@@ -649,7 +693,8 @@ const getFoodData = (grams: number, foodData: FoodItem): FoodItem => {
       carbs: Math.round(foodData.info.carbs * multiplier * 10) / 10,
       fiber: Math.round(foodData.info.fiber * multiplier * 10) / 10,
       category: foodData.info.category,
-      alkaline: foodData.info.alkaline
+      alkaline: foodData.info.alkaline,
+      bestFor: foodData.info.bestFor
     }
   };
 }
@@ -688,9 +733,11 @@ function findAlternatives(
       sameBestFor(f.info.bestFor, current.info.bestFor)
     );
 
+  const alternativeResultList: AlternativeResult[] = [];
+
   // Consider calories and fat
   if (current.info.category === 'fats' || current.info.category === 'dairy') {
-    filtered = filtered
+    alternativeResultList.push(...filtered
       .flatMap(candidate => {
         const p = candidate.info;
 
@@ -699,12 +746,16 @@ function findAlternatives(
           p.fat      > 0 ? (target.fat      / p.fat)      * 100 : Infinity,
         );
 
-        return maxGrams > 0 ? [{ food: candidate, quantityGrams: Math.floor(maxGrams) }] : [];
-      });
+        return maxGrams > 0 ? [{
+          food: candidate, 
+          quantityGrams: Math.floor(maxGrams),
+          
+        }] : [];
+      }));
   }
   // Consider calories and proteins
   else if (current.info.category === 'proteins') {
-    filtered = filtered
+    alternativeResultList.push(...filtered
       .flatMap(candidate => {
         const p = candidate.info;
 
@@ -713,12 +764,15 @@ function findAlternatives(
           p.protein  > 0 ? (target.protein  / p.protein)  * 100 : Infinity,
         );
 
-        return maxGrams > 0 ? [{ food: candidate, quantityGrams: Math.floor(maxGrams) }] : [];
-      });
+        return maxGrams > 0 ? [{
+          food: candidate,
+          quantityGrams: Math.floor(maxGrams)
+        }] : [];
+      }));
   }
   // Consider calories and carbs
   else if (current.info.category === 'carbs' || current.info.category === 'fruits' || current.info.category === 'low carb') {
-    filtered = filtered
+    alternativeResultList.push(...filtered
       .flatMap(candidate => {
         const p = candidate.info;
 
@@ -727,12 +781,16 @@ function findAlternatives(
           p.carbs    > 0 ? (target.carbs    / p.carbs)    * 100 : Infinity,
         );
 
-        return maxGrams > 0 ? [{ food: candidate, quantityGrams: Math.floor(maxGrams) }] : [];
-      });
+        return maxGrams > 0 ? [{
+          ...candidate,
+          food: candidate,
+          quantityGrams: Math.floor(maxGrams)
+        }] : [];
+      }));
   }
   // Consider only calories
   else if (current.info.category === 'leaves') {
-    filtered = filtered
+    alternativeResultList.push(...filtered
       .flatMap(candidate => {
         const p = candidate.info;
 
@@ -740,11 +798,14 @@ function findAlternatives(
           p.calories > 0 ? (target.calories / p.calories) * 100 : Infinity,
         );
 
-        return maxGrams > 0 ? [{ food: candidate, quantityGrams: Math.floor(maxGrams) }] : [];
-      });
+        return maxGrams > 0 ? [{
+          food: candidate,
+          quantityGrams: Math.floor(maxGrams)
+        }] : [];
+      }));
   }
 
-  return filtered
+  return alternativeResultList
     .filter(f => f.quantityGrams > 0)
     .sort((a, b) => a.food.name.localeCompare(b.food.name));
 }
