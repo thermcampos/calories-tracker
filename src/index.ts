@@ -1659,6 +1659,48 @@ function showAIContent(nutritionInfo: NutritionInfo) {
   getDivById('ai-nutrition-error').classList.add('hidden');
   getDivById('ai-nutrition-content').classList.remove('hidden');
 
+  // Populate daily intake context
+  const dailyIntakeText = document.getElementById('ai-daily-intake-text');
+  const dailyIntakeSection = document.getElementById('ai-daily-intake-section');
+  if (dailyIntakeText && dailyIntakeSection && nutritionInfo.dailyIntake) {
+    dailyIntakeText.textContent = nutritionInfo.dailyIntake;
+    dailyIntakeSection.classList.remove('hidden');
+  } else if (dailyIntakeSection) {
+    dailyIntakeSection.classList.add('hidden');
+  }
+
+  // Populate fat loss info
+  const fatLossDensity = document.getElementById('ai-fat-loss-density');
+  const fatLossNotes = document.getElementById('ai-fat-loss-notes');
+  const fatLossSection = document.getElementById('ai-fat-loss-section');
+  if (fatLossSection && nutritionInfo.fatLoss) {
+    if (fatLossDensity) {
+      fatLossDensity.textContent = nutritionInfo.fatLoss.caloricDensity || 'N/A';
+    }
+    if (fatLossNotes) {
+      fatLossNotes.textContent = nutritionInfo.fatLoss.notes || '';
+    }
+    fatLossSection.classList.remove('hidden');
+  } else if (fatLossSection) {
+    fatLossSection.classList.add('hidden');
+  }
+
+  // Populate muscle building info
+  const muscleBuildingProtein = document.getElementById('ai-muscle-building-protein');
+  const muscleBuildingNotes = document.getElementById('ai-muscle-building-notes');
+  const muscleBuildingSection = document.getElementById('ai-muscle-building-section');
+  if (muscleBuildingSection && nutritionInfo.muscleBuilding) {
+    if (muscleBuildingProtein) {
+      muscleBuildingProtein.textContent = nutritionInfo.muscleBuilding.proteinQuality || 'N/A';
+    }
+    if (muscleBuildingNotes) {
+      muscleBuildingNotes.textContent = nutritionInfo.muscleBuilding.notes || '';
+    }
+    muscleBuildingSection.classList.remove('hidden');
+  } else if (muscleBuildingSection) {
+    muscleBuildingSection.classList.add('hidden');
+  }
+
   // Populate vitamins
   const vitaminsList = document.getElementById('ai-vitamins-list');
   if (vitaminsList) {

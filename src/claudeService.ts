@@ -8,10 +8,23 @@ const anthropic = new Anthropic({
   dangerouslyAllowBrowser: true // Allow usage in browser (for development/demo purposes)
 });
 
+export interface FatLossInfo {
+  caloricDensity: string;
+  notes: string;
+}
+
+export interface MuscleBuildingInfo {
+  proteinQuality: string;
+  notes: string;
+}
+
 export interface NutritionInfo {
   vitamins: string[];
   minerals: string[];
   benefits: string[];
+  fatLoss: FatLossInfo;
+  muscleBuilding: MuscleBuildingInfo;
+  dailyIntake: string;
   notes: string;
 }
 
@@ -80,49 +93,95 @@ export async function getNutritionInfo(foodName: string): Promise<NutritionInfo>
   try {
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 2048,
+      tools: [
+        {
+          name: 'submit_nutrition_info',
+          description: 'Submit structured nutritional information for a food item.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              vitamins: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Only vitamins present in significant amounts, formatted as "Vitamina X: descrição"'
+              },
+              minerals: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Only minerals present in significant amounts, formatted as "Mineral: descrição"'
+              },
+              benefits: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Main health benefits'
+              },
+              fatLoss: {
+                type: 'object',
+                properties: {
+                  caloricDensity: { type: 'string', enum: ['baixa', 'média', 'alta'] },
+                  notes: { type: 'string' }
+                },
+                required: ['caloricDensity', 'notes']
+              },
+              muscleBuilding: {
+                type: 'object',
+                properties: {
+                  proteinQuality: { type: 'string' },
+                  notes: { type: 'string' }
+                },
+                required: ['proteinQuality', 'notes']
+              },
+              dailyIntake: {
+                type: 'string',
+                description: 'Contextualization of how this 100g portion contributes to typical daily needs'
+              },
+              notes: {
+                type: 'string',
+                description: 'Additional important information'
+              }
+            },
+            required: ['vitamins', 'minerals', 'benefits', 'fatLoss', 'muscleBuilding', 'dailyIntake', 'notes']
+          }
+        }
+      ],
+      tool_choice: { type: 'tool', name: 'submit_nutrition_info' },
       messages: [
         {
           role: 'user',
           content: `Provide detailed nutritional information for 100g of ${foodName}.
 
-IMPORTANT: Respond in Brazilian Portuguese (pt-BR).
+IMPORTANT: Respond in Brazilian Portuguese (pt-BR) — all string values in the tool call must be in pt-BR.
 
 Focus on:
-1. Key vitamins (e.g., A, B complex, C, D, E, K)
-2. Important minerals (e.g., iron, calcium, magnesium, zinc, potassium)
+1. Key vitamins (e.g., A, B complex, C, D, E, K) — only significant amounts
+2. Important minerals (e.g., iron, calcium, magnesium, zinc, potassium) — only significant amounts
 3. Main health benefits
-4. Any important notes or considerations
+4. Fat loss considerations: satiety level, calorie density, whether it fits well in a caloric deficit, and any tips for portion control
+5. Muscle building considerations: protein quality/completeness, leucine content if relevant, best pairing, and how it supports muscle protein synthesis
+6. Daily recommended intake context: how much of an adult's typical daily needs a 100g portion covers, based on general adult reference values
+7. Any important notes or considerations (allergens, preparation tips, moderation warnings, etc.)
 
-Format your response as JSON with this structure:
-{
-  "vitamins": ["Vitamina A: descrição", "Vitamina C: descrição", ...],
-  "minerals": ["Ferro: descrição", "Cálcio: descrição", ...],
-  "benefits": ["benefício 1", "benefício 2", ...],
-  "notes": "Informações adicionais importantes"
-}
-
-Be concise but informative. Only include significant amounts of vitamins and minerals. All text must be in Brazilian Portuguese.`
+Do not include amount of fats, carbs, or proteins in grams — no need. Be concise but informative.`
         }
       ]
     });
 
-    // Extract the text content from Claude's response
-    const textContent = message.content.find(block => block.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
-      throw new Error('No text content in response');
+    console.log(`stop_reason=${message.stop_reason}`);
+    if (message.stop_reason === 'max_tokens') {
+      console.warn(`Response truncated for "${foodName}" — hit max_tokens limit`);
     }
 
-    // Parse the JSON response
-    const responseText = textContent.text;
+    // With tool_choice forcing a specific tool, the tool_use block is guaranteed
+    const toolUseBlock = message.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
+    );
 
-    // Extract JSON from the response (handle cases where Claude adds markdown formatting)
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Could not parse JSON from response');
+    if (!toolUseBlock) {
+      throw new Error('No tool_use block in response');
     }
 
-    const nutritionInfo: NutritionInfo = JSON.parse(jsonMatch[0]);
+    const nutritionInfo: NutritionInfo = toolUseBlock.input as NutritionInfo;
 
     // Cache the result for future use
     cacheNutrition(foodName, 100, nutritionInfo);

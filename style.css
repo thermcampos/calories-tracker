@@ -1255,6 +1255,28 @@ label {
     margin: 0;
 }
 
+.ai-info-block {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.ai-info-label {
+    font-weight: 600;
+    color: #b0b0b0;
+}
+
+.ai-info-value {
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: capitalize;
+}
+
+.ai-sub-notes {
+    margin-top: 8px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .ai-nutrition-container {

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The Food Log entries now are displayed collapsed.
+- AI integration to provide more information.
 
 ## 2026-07-16
 
