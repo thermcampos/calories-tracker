@@ -2155,7 +2155,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
       totalProtein: 0,
       totalFat: 0,
       totalCarbs: 0,
-      isExpanded: true
+      isExpanded: false
     },
     'breakfast': {
       period: 'breakfast',
@@ -2165,7 +2165,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
       totalProtein: 0,
       totalFat: 0,
       totalCarbs: 0,
-      isExpanded: true
+      isExpanded: false
     },
     'second-breakfast': {
       period: 'second-breakfast',
@@ -2175,7 +2175,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
       totalProtein: 0,
       totalFat: 0,
       totalCarbs: 0,
-      isExpanded: true
+      isExpanded: false
     },
     'lunch': {
       period: 'lunch',
@@ -2185,7 +2185,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
       totalProtein: 0,
       totalFat: 0,
       totalCarbs: 0,
-      isExpanded: true
+      isExpanded: false
     },
     'snacks': {
       period: 'snacks',
@@ -2195,7 +2195,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
       totalProtein: 0,
       totalFat: 0,
       totalCarbs: 0,
-      isExpanded: true
+      isExpanded: false
     },
     'dinner': {
       period: 'dinner',
@@ -2205,7 +2205,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
       totalProtein: 0,
       totalFat: 0,
       totalCarbs: 0,
-      isExpanded: true
+      isExpanded: false
     },
     'night-snacks': {
       period: 'night-snacks',
@@ -2215,7 +2215,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
       totalProtein: 0,
       totalFat: 0,
       totalCarbs: 0,
-      isExpanded: true
+      isExpanded: false
     }
   };
 
@@ -2509,7 +2509,7 @@ function renderMealGroup(group: MealGroup) {
         <span class="meal-summary-item">${roundedCarbs}g carbs</span>
       </div>
     </div>
-    <div class="meal-group-toggle">▼</div>
+    <div class="meal-group-toggle rotated">▲</div>
   `;
 
   // Create food items container (collapsible)

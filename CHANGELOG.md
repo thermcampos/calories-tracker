@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - New section with options to export data based in range dates.
 
+### Changed
+- The Food Log entries now are displayed collapsed.
+
 ## 2026-07-16
 
 ### Added
