@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 2026-07-17
+
+### Added
+- New section with options to export data based in range dates.
+
 ## 2026-07-16
 
 ### Added

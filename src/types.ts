@@ -70,3 +70,13 @@ export type AlternativeResult = {
   food: FoodItem;
   quantityGrams: number;
 };
+
+export type ExportInputDates = {
+  start: string;
+  end: string
+};
+
+export type ExportDateValidation = {
+  valid: boolean;
+  message: string
+};

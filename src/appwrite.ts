@@ -154,7 +154,7 @@ export class AppwriteDB {
           Query.equal('userId', user.$id),
           Query.greaterThanEqual('date', startLocal.split('T')[0]),
           Query.lessThanEqual('date', endLocal.split('T')[0]),
-          Query.limit(100)
+          Query.limit(500)
         ]
       );
       console.debug('Food entries retrieved for range:', response);

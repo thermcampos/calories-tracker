@@ -861,6 +861,76 @@ label {
     color: #666;
 }
 
+.export-section {
+    background: #2a2a2a;
+    border-radius: 6px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    margin-top: 30px;
+    padding: 20px;
+}
+
+.export-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
+}
+
+.export-form .form-group {
+    margin-bottom: 0;
+}
+
+.export-form .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #b0b0b0;
+    font-size: 0.9rem;
+}
+
+.export-form input[type="date"] {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #404040;
+    border-radius: 6px;
+    font-size: 16px;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.export-form input[type="date"]:focus {
+    border-color: #6B8DD6;
+    box-shadow: 0 0 0 3px rgba(107, 141, 214, 0.2);
+}
+
+.export-btn {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #4A5D8A, #5A3E7A);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    height: fit-content;
+}
+
+.export-btn:hover {
+    background: linear-gradient(135deg, #5A6D9A, #6A4E8A);
+}
+
+.export-btn:disabled {
+    background: #555;
+    cursor: not-allowed;
+}
+
+.read-only-disabled .export-section {
+    display: none;
+}
+
 @media (max-width: 768px) {
     .container {
         margin: 0px;
@@ -930,6 +1000,14 @@ label {
 
     .details-content {
         padding: 16px;
+    }
+
+    .export-form {
+        grid-template-columns: 1fr;
+    }
+
+    .export-btn {
+        width: 100%;
     }
 }
 
