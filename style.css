@@ -870,6 +870,55 @@ label {
     padding: 20px;
 }
 
+.bmi-section {
+    background: #2a2a2a;
+    border-radius: 6px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    margin-top: 30px;
+    padding: 20px;
+}
+
+.bmi-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.bmi-stat {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+}
+
+.bmi-stat-label {
+    font-size: 0.85rem;
+    color: #999;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bmi-stat-value {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.bmi-last-update {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    text-align: right;
+}
+
+@media (max-width: 768px) {
+    .bmi-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
 .exercise-list-container {
     display: flex;
     flex-direction: column;

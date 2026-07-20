@@ -2468,6 +2468,55 @@ async function loadExerciseEntries(date: Date) {
   }
 }
 
+async function loadBMIInfo() {
+  if (!currentUser) return;
+
+  const weightEl = getDivById('bmiWeight');
+  const heightEl = getDivById('bmiHeight');
+  const bmiEl = getDivById('bmiValue');
+  const lastUpdateEl = getDivById('bmiLastUpdate');
+
+  weightEl.textContent = '—';
+  heightEl.textContent = '—';
+  bmiEl.textContent = '—';
+  lastUpdateEl.textContent = '';
+
+  try {
+    const allDocs = await AppwriteDB.getUserSettings();
+    const globalSettings = allDocs.find((d: any) => !d.goalName);
+
+    if (!globalSettings) {
+      lastUpdateEl.textContent = 'No body metrics saved yet';
+      return;
+    }
+
+    const bodyWeight = parseFloat(globalSettings.bodyWeight);
+    const height = parseFloat(globalSettings.height);
+    let bmi: number | null = null;
+
+    if (!isNaN(bodyWeight) && bodyWeight > 0 && !isNaN(height) && height > 0) {
+      bmi = bodyWeight / ((height / 100) ** 2);
+    } else if (globalSettings.bmi) {
+      const storedBmi = parseFloat(globalSettings.bmi);
+      if (!isNaN(storedBmi) && storedBmi > 0) {
+        bmi = storedBmi;
+      }
+    }
+
+    weightEl.textContent = !isNaN(bodyWeight) && bodyWeight > 0 ? `${bodyWeight.toFixed(1)} kg` : '—';
+    heightEl.textContent = !isNaN(height) && height > 0 ? `${height.toFixed(1)} cm` : '—';
+    bmiEl.textContent = bmi !== null && !isNaN(bmi) ? bmi.toFixed(2) : '—';
+
+    if (globalSettings.$updatedAt) {
+      const date = new Date(globalSettings.$updatedAt);
+      lastUpdateEl.textContent = `Last update: ${date.toLocaleString('pt-BR')}`;
+    }
+  } catch (error) {
+    console.error('Load BMI info error:', error);
+    lastUpdateEl.textContent = 'Unable to load BMI info';
+  }
+}
+
 function createExerciseCard(entry: ExerciseEntry): HTMLElement {
   const card = document.createElement('div');
   card.className = 'exercise-card';
@@ -2847,6 +2896,7 @@ const selectDate = async (date: Date) => {
   updateCurrentDate();
   await loadFoodEntries(date);
   await loadExerciseEntries(date);
+  await loadBMIInfo();
   if (autoLoadSuggestions && !isSuggestionsDismissed) {
     await loadSmartSuggestions();
   }
@@ -3191,6 +3241,12 @@ function applyReadOnlyMode() {
   const exerciseSection = document.querySelector('.exercise-section');
   if (exerciseSection) {
     exerciseSection.classList.add('hidden');
+  }
+
+  // Hide BMI section
+  const bmiSection = document.querySelector('.bmi-section');
+  if (bmiSection) {
+    bmiSection.classList.add('hidden');
   }
 }
 
