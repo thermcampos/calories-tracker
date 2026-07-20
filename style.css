@@ -861,6 +861,168 @@ label {
     color: #666;
 }
 
+.exercise-section {
+    background: #2a2a2a;
+    border-radius: 6px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    margin-top: 30px;
+    padding: 20px;
+}
+
+.exercise-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.exercise-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    font-size: 1rem;
+}
+
+.exercise-card {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.exercise-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.exercise-card-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 6px;
+}
+
+.exercise-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #b0b0b0;
+}
+
+.exercise-card-meta span {
+    background: #2a2a2a;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.exercise-card-observations {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: #999;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.exercise-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.track-exercise-btn {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.track-exercise-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+}
+
+.exercise-form .form-group {
+    margin-bottom: 15px;
+}
+
+.exercise-form label {
+    display: block;
+    margin-bottom: 8px;
+    color: #b0b0b0;
+    font-size: 0.9rem;
+}
+
+.exercise-form input[type="text"],
+.exercise-form input[type="number"],
+.exercise-form textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #404040;
+    border-radius: 6px;
+    font-size: 16px;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    outline: none;
+    font-family: inherit;
+}
+
+.exercise-form input[type="text"]:focus,
+.exercise-form input[type="number"]:focus,
+.exercise-form textarea:focus {
+    border-color: #6B8DD6;
+    box-shadow: 0 0 0 3px rgba(107, 141, 214, 0.2);
+}
+
+.exercise-form textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.exercise-form-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.modal-btn-primary {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+}
+
+.modal-btn-primary:hover {
+    background: linear-gradient(135deg, #43a047, #388e3c);
+}
+
+.read-only-disabled .exercise-section {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .exercise-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .exercise-card {
+        flex-direction: column;
+    }
+
+    .exercise-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
 .export-section {
     background: #2a2a2a;
     border-radius: 6px;

@@ -7,6 +7,10 @@ interface ImportMetaEnv {
   readonly VITE_APPWRITE_DBID: string;
   readonly VITE_APPWRITE_FOODENTRIESID: string;
   readonly VITE_APPWRITE_USERSETTINGSID: string;
+  readonly VITE_APPWRITE_MONTLYCALORIESID: string;
+  readonly VITE_APPWRITE_SHAREDDAYSID: string;
+  readonly VITE_APPWRITE_EXERCISEENTRIESID: string;
+  readonly VITE_CLAUDE_API_KEY: string;
 }
 
 interface ImportMeta {

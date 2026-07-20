@@ -197,6 +197,42 @@
         </div>
     </div>
 
+    <!-- Exercise Modal -->
+    <div id="exerciseModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="exerciseModalTitle">Track Exercise</h2>
+            <form id="exerciseForm" class="exercise-form">
+                <input type="hidden" id="exerciseIdToUpdate">
+                <div class="form-group">
+                    <label for="exerciseName">Exercise Name *</label>
+                    <input type="text" id="exerciseName" placeholder="e.g., Running, Yoga, Weightlifting" required>
+                </div>
+                <div class="form-group exercise-form-row">
+                    <div>
+                        <label for="exerciseDuration">Duration (min)</label>
+                        <input type="number" id="exerciseDuration" min="0" step="1" inputmode="numeric" pattern="[0-9]*" placeholder="Minutes">
+                    </div>
+                    <div>
+                        <label for="exerciseCalories">Calories Burned</label>
+                        <input type="number" id="exerciseCalories" min="0" step="1" inputmode="numeric" pattern="[0-9]*" placeholder="Calories">
+                    </div>
+                    <div>
+                        <label for="exerciseDistance">Distance (km)</label>
+                        <input type="number" id="exerciseDistance" min="0" step="0.01" placeholder="Kilometers">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="exerciseObservations">Observations</label>
+                    <textarea id="exerciseObservations" rows="3" placeholder="Notes about the workout..."></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" id="cancelExerciseBtn" class="modal-btn">Cancel</button>
+                    <button type="submit" id="saveExerciseBtn" class="modal-btn modal-btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Shared View Banner -->
     <div id="shared-view-banner" class="shared-view-banner hidden">
         <span id="shared-view-text">👁️ Viewing shared day from <strong id="shared-user-name"></strong> on <strong id="shared-date"></strong></span>
@@ -424,6 +460,14 @@
                 <div class="calendar-grid" id="calendarGrid">
                     <!-- Calendar will be generated here -->
                 </div>
+            </div>
+
+            <div class="exercise-section" id="exerciseSection">
+                <div class="section-title">Exercise Check-in</div>
+                <div class="exercise-list-container" id="exerciseListContainer">
+                    <!-- Exercise entries rendered here -->
+                </div>
+                <button class="track-exercise-btn" id="trackExerciseBtn" type="button">Track exercise</button>
             </div>
 
             <div class="export-section" id="exportSection">

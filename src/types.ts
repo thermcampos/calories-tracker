@@ -80,3 +80,14 @@ export type ExportDateValidation = {
   valid: boolean;
   message: string
 };
+
+export type ExerciseEntry = {
+  id?: string;
+  name: string;
+  duration?: number;
+  calories?: number;
+  distance?: number;
+  observations?: string;
+  date: string;
+  userId?: string;
+};

@@ -9,6 +9,7 @@ import {
 import {
   AlternativeResult,
   DailyTotalCalories,
+  ExerciseEntry,
   ExportDateValidation,
   ExportInputDates,
   FoodItem,
@@ -38,6 +39,10 @@ import { showAuthForms, toggleAuthForms, showRegisterForm, showLoginForm, hideAu
 import { appState } from "./state";
 import { getNutritionInfo, NutritionInfo, clearNutritionCache, getCacheStats } from './claudeService';
 import { getCurrentDate } from './dateUtils';
+
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // PWA Service Worker Registration
 import { registerSW } from 'virtual:pwa-register';
@@ -768,6 +773,7 @@ function clearAppData() {
   `;
   selectedFood = null;
   getButtonById('cancel-food-btn').style.display = 'none';
+  getDivById('exerciseListContainer').innerHTML = '<div class="exercise-empty">No exercises recorded</div>';
 }
 
 // ---- Smart Suggestions ----
@@ -1094,10 +1100,6 @@ function updateAlternativesDisplay() {
   const alternatives = findAlternatives(selectedFood, grams, foodDatabase);
   currentAlternatives = alternatives;
 
-  const escapeHtml = (text: string): string =>
-    text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
   if (alternatives.length === 0) {
     list.innerHTML = '<div class="no-alternatives">No equivalent alternatives found</div>';
   } else {
@@ -1375,6 +1377,11 @@ async function handleSelectGoal(goalId: string, allGoals: UserSettings[]) {
 
 // ---- End goal management ----
 
+function enforceIntegerInput(e: Event) {
+  const input = e.target as HTMLInputElement;
+  input.value = input.value.replace(/[^0-9]/g, '');
+}
+
 const setupEventListeners = () => {
   getInputById('foodSearchInput').addEventListener('change', (e: Event) => {
     const target = e.target as HTMLInputElement;
@@ -1480,6 +1487,18 @@ const setupEventListeners = () => {
 
   // Export button event listener
   getButtonById('exportBtn').addEventListener('click', handleExportMarkdown);
+
+  // Exercise event listeners
+  getButtonById('trackExerciseBtn').addEventListener('click', () => openExerciseModal());
+  getButtonById('cancelExerciseBtn').addEventListener('click', closeExerciseModal);
+  document.getElementById('exerciseForm')?.addEventListener('submit', handleSaveExercise);
+  getInputById('exerciseDuration').addEventListener('input', enforceIntegerInput);
+  getInputById('exerciseCalories').addEventListener('input', enforceIntegerInput);
+  getDivById('exerciseModal').addEventListener('click', (e) => {
+    if (e.target === getDivById('exerciseModal')) {
+      closeExerciseModal();
+    }
+  });
 
   // Landing page CTA button event listeners
   document.getElementById('cta-register-btn')?.addEventListener('click', () => {
@@ -2414,6 +2433,192 @@ async function loadFoodEntries(date: Date) {
   }
 }
 
+// ---- Exercise Check-in ----
+
+async function loadExerciseEntries(date: Date) {
+  if (!currentUser) return;
+
+  const container = getDivById('exerciseListContainer');
+  container.innerHTML = '';
+
+  try {
+    const entries = await AppwriteDB.getExerciseEntries(date);
+
+    if (!entries || entries.length === 0) {
+      container.innerHTML = '<div class="exercise-empty">No exercises recorded</div>';
+      return;
+    }
+
+    const exerciseEntries: ExerciseEntry[] = entries.map((entry: any) => ({
+      id: entry.$id,
+      name: entry.name,
+      duration: entry.duration,
+      calories: entry.calories,
+      distance: entry.distance,
+      observations: entry.observations,
+      date: entry.date,
+    }));
+
+    exerciseEntries.forEach(entry => {
+      container.appendChild(createExerciseCard(entry));
+    });
+  } catch (error) {
+    console.error('Load exercise entries error:', error);
+    container.innerHTML = '<div class="exercise-empty">Unable to load exercises</div>';
+  }
+}
+
+function createExerciseCard(entry: ExerciseEntry): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'exercise-card';
+  card.setAttribute('data-exercise-id', entry.id || '');
+
+  const metaParts: string[] = [];
+  if (entry.duration !== undefined && entry.duration !== null && entry.duration > 0) {
+    metaParts.push(`<span>${entry.duration} min</span>`);
+  }
+  if (entry.calories !== undefined && entry.calories !== null && entry.calories > 0) {
+    metaParts.push(`<span>${entry.calories} cal</span>`);
+  }
+  if (entry.distance !== undefined && entry.distance !== null && entry.distance > 0) {
+    metaParts.push(`<span>${entry.distance} km</span>`);
+  }
+
+  const metaHtml = metaParts.length > 0
+    ? `<div class="exercise-card-meta">${metaParts.join('')}</div>`
+    : '';
+  const observationsHtml = entry.observations
+    ? `<div class="exercise-card-observations">${escapeHtml(entry.observations)}</div>`
+    : '';
+
+  card.innerHTML = `
+    <div class="exercise-card-info">
+      <div class="exercise-card-name">${escapeHtml(entry.name)}</div>
+      ${metaHtml}
+      ${observationsHtml}
+    </div>
+    <div class="exercise-actions">
+      <button class="btn btn-edit exercise-edit-btn" data-exercise-id="${entry.id}">Edit</button>
+      <button class="btn btn-delete exercise-delete-btn" data-exercise-id="${entry.id}">Delete</button>
+    </div>
+  `;
+
+  const editBtn = card.querySelector('.exercise-edit-btn') as HTMLButtonElement;
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openExerciseModal(entry);
+  });
+
+  const deleteBtn = card.querySelector('.exercise-delete-btn') as HTMLButtonElement;
+  deleteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleDeleteExercise(entry.id);
+  });
+
+  return card;
+}
+
+function openExerciseModal(entry?: ExerciseEntry) {
+  const modal = getDivById('exerciseModal');
+  const title = document.getElementById('exerciseModalTitle') as HTMLElement;
+
+  getInputById('exerciseIdToUpdate').value = entry?.id ?? '';
+  getInputById('exerciseName').value = entry?.name ?? '';
+  getInputById('exerciseDuration').value = entry?.duration?.toString() ?? '';
+  getInputById('exerciseCalories').value = entry?.calories?.toString() ?? '';
+  getInputById('exerciseDistance').value = entry?.distance?.toString() ?? '';
+  (document.getElementById('exerciseObservations') as HTMLTextAreaElement).value = entry?.observations ?? '';
+
+  title.textContent = entry ? 'Edit Exercise' : 'Track Exercise';
+  modal.classList.remove('hidden');
+  getInputById('exerciseName').focus();
+}
+
+function closeExerciseModal() {
+  getDivById('exerciseModal').classList.add('hidden');
+  (document.getElementById('exerciseForm') as HTMLFormElement).reset();
+  getInputById('exerciseIdToUpdate').value = '';
+}
+
+async function handleSaveExercise(e: SubmitEvent) {
+  e.preventDefault();
+
+  if (!currentUser) {
+    swal('Hey!', 'Please log in to track exercises.', 'info');
+    return;
+  }
+
+  const name = getInputById('exerciseName').value.trim();
+  if (!name) {
+    swal('Hey!', 'Exercise name is required.', 'error');
+    return;
+  }
+
+  const duration = getInputById('exerciseDuration').value;
+  const calories = getInputById('exerciseCalories').value;
+  const distance = getInputById('exerciseDistance').value;
+  const observations = (document.getElementById('exerciseObservations') as HTMLTextAreaElement).value.trim();
+  const editingId = getInputById('exerciseIdToUpdate').value;
+
+  const date = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString();
+
+  const entry: ExerciseEntry = {
+    name,
+    duration: duration ? parseInt(duration, 10) : undefined,
+    calories: calories ? parseInt(calories, 10) : undefined,
+    distance: distance ? parseFloat(distance) : undefined,
+    observations: observations || undefined,
+    date: date.split('T')[0],
+  };
+
+  showLoading();
+  try {
+    if (editingId) {
+      await AppwriteDB.updateExerciseEntry(editingId, entry);
+    } else {
+      await AppwriteDB.saveExerciseEntry(entry);
+    }
+    closeExerciseModal();
+    await loadExerciseEntries(selectedDate);
+  } catch (error) {
+    console.error('Save exercise error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to save exercise: ' + error.message, 'error');
+    }
+  } finally {
+    hideLoading();
+  }
+}
+
+async function handleDeleteExercise(id: string | undefined) {
+  if (!id) return;
+
+  const willDelete = await swal({
+    title: 'Delete Exercise?',
+    text: 'Are you sure you want to delete this exercise record?',
+    icon: 'warning',
+    dangerMode: true,
+    buttons: ['Cancel', 'Delete'],
+  });
+
+  if (!willDelete) return;
+
+  showLoading();
+  try {
+    await AppwriteDB.deleteExerciseEntry(id);
+    await loadExerciseEntries(selectedDate);
+  } catch (error) {
+    console.error('Delete exercise error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to delete exercise: ' + error.message, 'error');
+    }
+  } finally {
+    hideLoading();
+  }
+}
+
+// ---- End Exercise Check-in ----
+
 // Handle food deletion
 async function handleDeleteFood(documentId: string) {
   if (!documentId) return;
@@ -2641,6 +2846,7 @@ const selectDate = async (date: Date) => {
   selectedDate = date;
   updateCurrentDate();
   await loadFoodEntries(date);
+  await loadExerciseEntries(date);
   if (autoLoadSuggestions && !isSuggestionsDismissed) {
     await loadSmartSuggestions();
   }
@@ -2979,6 +3185,12 @@ function applyReadOnlyMode() {
   const calendarSection = document.querySelector('.calendar-section');
   if (calendarSection) {
     calendarSection.classList.add('read-only-disabled');
+  }
+
+  // Hide exercise section
+  const exerciseSection = document.querySelector('.exercise-section');
+  if (exerciseSection) {
+    exerciseSection.classList.add('hidden');
   }
 }
 

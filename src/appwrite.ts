@@ -1,5 +1,6 @@
 import { Client, Account, Databases, Query, ID } from 'appwrite';
-import { FoodStorage, UserSettings } from './types';
+import { ExerciseEntry, FoodStorage, UserSettings } from './types';
+
 
 // Initialize Appwrite client
 const client = new Client();
@@ -18,6 +19,7 @@ export const FOOD_ENTRIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_FOODENTR
 export const USER_SETTINGS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERSETTINGSID
 export const MONTHLY_CALORIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_MONTLYCALORIESID
 export const SHARED_DAYS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_SHAREDDAYSID
+export const EXERCISE_ENTRIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_EXERCISEENTRIESID
 
 // Auth helper functions
 export class AppwriteAuth {
@@ -443,6 +445,84 @@ export class AppwriteDB {
       return response.documents[0];
     } catch (error) {
       console.error('Get shared day error:', error);
+      throw error;
+    }
+  }
+
+  // Save exercise entry
+  static async saveExerciseEntry(entryData: ExerciseEntry) {
+    try {
+      const response = await databases.createDocument(
+        DATABASE_ID,
+        EXERCISE_ENTRIES_COLLECTION_ID,
+        'unique()',
+        {
+          ...entryData,
+          userId: (await account.get()).$id,
+        }
+      );
+      console.debug('Exercise entry saved:', response);
+      return response;
+    } catch (error) {
+      console.error('Save exercise entry error:', error);
+      throw error;
+    }
+  }
+
+  // Update exercise entry
+  static async updateExerciseEntry(documentId: string, entryData: Partial<ExerciseEntry>) {
+    try {
+      const response = await databases.updateDocument(
+        DATABASE_ID,
+        EXERCISE_ENTRIES_COLLECTION_ID,
+        documentId,
+        {
+          ...entryData,
+          userId: (await account.get()).$id,
+        }
+      );
+      console.debug('Exercise entry updated:', response);
+      return response;
+    } catch (error) {
+      console.error('Update exercise entry error:', error);
+      throw error;
+    }
+  }
+
+  // Get user's exercise entries for a specific date
+  static async getExerciseEntries(date: Date) {
+    try {
+      const user = await account.get();
+      const localDateTime = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString();
+
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        EXERCISE_ENTRIES_COLLECTION_ID,
+        [
+          Query.equal('userId', user.$id),
+          Query.equal('date', localDateTime.split('T')[0]),
+          Query.limit(50)
+        ]
+      );
+      console.debug('Exercise entries retrieved:', response);
+      return response.documents;
+    } catch (error) {
+      console.error('Get exercise entries error:', error);
+      throw error;
+    }
+  }
+
+  // Delete exercise entry
+  static async deleteExerciseEntry(documentId: string) {
+    try {
+      await databases.deleteDocument(
+        DATABASE_ID,
+        EXERCISE_ENTRIES_COLLECTION_ID,
+        documentId
+      );
+      console.debug('Exercise entry deleted:', documentId);
+    } catch (error) {
+      console.error('Delete exercise entry error:', error);
       throw error;
     }
   }
