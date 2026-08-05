@@ -1,5 +1,6 @@
-import { Client, Account, Databases, Query, ID } from 'appwrite';
+import { Client, Account, Databases, Query, ID, Models } from 'appwrite';
 import { ExerciseEntry, FoodStorage, UserSettings } from './types';
+import { getCachedUser, setCachedUser, clearCachedUser } from './userCache';
 
 
 // Initialize Appwrite client
@@ -20,6 +21,22 @@ export const USER_SETTINGS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERSET
 export const MONTHLY_CALORIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_MONTLYCALORIESID
 export const SHARED_DAYS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_SHAREDDAYSID
 export const EXERCISE_ENTRIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_EXERCISEENTRIESID
+
+async function getCurrentAccountUser(): Promise<Models.User<Record<string, unknown>>> {
+  const cached = await getCachedUser();
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const user = await account.get();
+    await setCachedUser(user);
+    return user;
+  } catch (error) {
+    await clearCachedUser();
+    throw error;
+  }
+}
 
 // Auth helper functions
 export class AppwriteAuth {
@@ -51,8 +68,10 @@ export class AppwriteAuth {
   static async logout() {
     try {
       await account.deleteSession('current');
+      await clearCachedUser();
       console.debug('User logged out');
     } catch (error) {
+      await clearCachedUser();
       console.error('Logout error:', error);
       throw error;
     }
@@ -61,7 +80,7 @@ export class AppwriteAuth {
   // Get current user
   static async getCurrentUser() {
     try {
-      const user = await account.get();
+      const user = await getCurrentAccountUser();
       return user;
     } catch (error) {
       console.error('Get user error:', error);
@@ -72,7 +91,7 @@ export class AppwriteAuth {
   // Check if user is logged in
   static async isLoggedIn() {
     try {
-      await account.get();
+      await getCurrentAccountUser();
       return true;
     } catch {
       return false;
@@ -91,7 +110,7 @@ export class AppwriteDB {
           'unique()',
           {
               ...entryData,
-              userId: (await account.get()).$id,
+              userId: (await getCurrentAccountUser()).$id,
           }
       );
       console.debug('Food entry saved:', response);
@@ -111,7 +130,7 @@ export class AppwriteDB {
           documentId,
           {
               ...entryData,
-              userId: (await account.get()).$id,
+              userId: (await getCurrentAccountUser()).$id,
           }
       );
       console.debug('Food entry updated:', response);
@@ -131,7 +150,7 @@ export class AppwriteDB {
           'unique()',
           {
               ...userSettings,
-              userId: (await account.get()).$id,
+              userId: (await getCurrentAccountUser()).$id,
           }
       );
       console.debug('User settings saved:', response);
@@ -145,7 +164,7 @@ export class AppwriteDB {
   // Get user's food entries for a date range (last N days)
   static async getFoodEntriesForDateRange(startDate: Date, endDate: Date) {
     try {
-      const user = await account.get();
+      const user = await getCurrentAccountUser();
       const startLocal = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString();
       const endLocal = new Date(endDate.getTime() - (endDate.getTimezoneOffset() * 60000)).toISOString();
 
@@ -170,7 +189,7 @@ export class AppwriteDB {
   // Get user's food entries for a specific date
   static async getFoodEntries(date: Date) {
     try {
-      const user = await account.get();
+      const user = await getCurrentAccountUser();
       const localDateTime = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString();
 
       const response = await databases.listDocuments(
@@ -193,7 +212,7 @@ export class AppwriteDB {
   // Get all calories for a particular date
   static async getMonthlyCalories(date: Date) {
     try {
-      const user = await account.get();
+      const user = await getCurrentAccountUser();
       const localDateTime = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString();
 
       const response = await databases.listDocuments(
@@ -222,7 +241,7 @@ export class AppwriteDB {
         MONTHLY_CALORIES_COLLECTION_ID ,
         'unique()',
         {
-          userId: (await account.get()).$id,
+          userId: (await getCurrentAccountUser()).$id,
           date: localDateTime.substring(0, 10),
           totalCalories: totalCalories
         }
@@ -244,7 +263,7 @@ export class AppwriteDB {
         MONTHLY_CALORIES_COLLECTION_ID ,
         id,
         {
-          userId: (await account.get()).$id,
+          userId: (await getCurrentAccountUser()).$id,
           date: localDateTime.substring(0, 10),
           totalCalories: totalCalories
         }
@@ -260,7 +279,7 @@ export class AppwriteDB {
   // get user's settings
   static async getUserSettings() {
     try {
-      const user = await account.get();
+      const user = await getCurrentAccountUser();
 
       const response = await databases.listDocuments(
         DATABASE_ID,
@@ -299,7 +318,7 @@ export class AppwriteDB {
         documentId,
         {
           ...settings,
-          userId: (await account.get()).$id,
+          userId: (await getCurrentAccountUser()).$id,
         }
       );
       console.debug('User settings updated:', response);
@@ -318,7 +337,7 @@ export class AppwriteDB {
         'unique()',
         {
           ...goal,
-          userId: (await account.get()).$id,
+          userId: (await getCurrentAccountUser()).$id,
         }
       );
       console.debug('User goal saved:', response);
@@ -337,7 +356,7 @@ export class AppwriteDB {
         documentId,
         {
           ...goal,
-          userId: (await account.get()).$id,
+          userId: (await getCurrentAccountUser()).$id,
         }
       );
       console.debug('User goal updated:', response);
@@ -400,7 +419,7 @@ export class AppwriteDB {
   // Create shared day snapshot
   static async createSharedDay(date: Date, foodEntries: FoodStorage[]) {
     try {
-      const user = await account.get();
+      const user = await getCurrentAccountUser();
       const shareId = ID.unique();
       const localDateTime = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString();
 
@@ -458,7 +477,7 @@ export class AppwriteDB {
         'unique()',
         {
           ...entryData,
-          userId: (await account.get()).$id,
+          userId: (await getCurrentAccountUser()).$id,
         }
       );
       console.debug('Exercise entry saved:', response);
@@ -478,7 +497,7 @@ export class AppwriteDB {
         documentId,
         {
           ...entryData,
-          userId: (await account.get()).$id,
+          userId: (await getCurrentAccountUser()).$id,
         }
       );
       console.debug('Exercise entry updated:', response);
@@ -492,7 +511,7 @@ export class AppwriteDB {
   // Get user's exercise entries for a specific date
   static async getExerciseEntries(date: Date) {
     try {
-      const user = await account.get();
+      const user = await getCurrentAccountUser();
       const localDateTime = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString();
 
       const response = await databases.listDocuments(
