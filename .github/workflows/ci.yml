@@ -11,24 +11,13 @@ concurrency:
 
 jobs:
   build-deploy:
-    runs-on: easynode-debian
-    env:
-      VITE_APPWRITE_PROJECT_ID: ${{ secrets.VITE_APPWRITE_PROJECT_ID }}
-      VITE_APPWRITE_ENDPOINT: ${{ secrets.VITE_APPWRITE_ENDPOINT }}
-      VITE_APPWRITE_DBID: ${{ secrets.VITE_APPWRITE_DBID }}
-      VITE_APPWRITE_FOODENTRIESID: ${{ secrets.VITE_APPWRITE_FOODENTRIESID }}
-      VITE_APPWRITE_USERSETTINGSID: ${{ secrets.VITE_APPWRITE_USERSETTINGSID }}
-      VITE_APPWRITE_MONTLYCALORIESID: ${{ secrets.VITE_APPWRITE_MONTLYCALORIESID }}
-      VITE_APPWRITE_SHAREDDAYSID: ${{ secrets.VITE_APPWRITE_SHAREDDAYSID }}
-      VITE_APPWRITE_EXERCISEENTRIESID: ${{ secrets.VITE_APPWRITE_EXERCISEENTRIESID }}
-      VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
-    
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7.0.1
      
     - name: Cache npm dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v6.1.0
       with:
         path: ~/.npm
         key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
@@ -37,7 +26,12 @@ jobs:
     
     - name: Install dependencies
       run: npm ci
+
+    - name: Setup Doppler CLI
+      uses: dopplerhq/cli-action@v4
       
     - name: Build
-      run: npm run build
+      env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_SVC_TOKEN }}
+      run: doppler run --project calories-tracker --config prd -- npm run build
 
