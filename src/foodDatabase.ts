@@ -118,6 +118,8 @@ export const foodDatabase: FoodItem[] = [
   { name: 'Leite Caju+côco A Tal da Castanha', nameEn: 'Cashew+Coconut Milk A Tal da Castanha', info: { calories: 51, protein: 2, fat: 3.4, carbs: 2.6, fiber: 0, category: 'dairy', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Leite Caju Original A Tal da Castanha', nameEn: 'Original Cashew Milk A Tal da Castanha', info: { calories: 48, protein: 1.5, fat: 4, carbs: 1.5, fiber: 0.7, category: 'dairy', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
 
+  // Coffees
+  { name: 'Café Latte Aveia Nude', nameEn: 'Latte Coffee Oat Nude', info: { calories: 130, protein: 2.3, fat: 6.4, carbs: 14, fiber: 1.5, category: 'dairy', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   
   // Low carb
   { name: 'Abóbrinha, italinaa, cozida', nameEn: 'Italian Zucchini, cooked', info: { calories: 15, protein: 1.1, fat: 0.2, carbs: 3.0, fiber: 1.6, category: 'low carb', alkaline: true, bestFor: ['lunch', 'dinner'] } },
