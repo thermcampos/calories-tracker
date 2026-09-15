@@ -16,25 +16,14 @@ env:
   APP_FOLDER: "calories-tracker"
 
 jobs:
-  build-deploy:
-    runs-on: easynode-debian
-    env:
-      VITE_APPWRITE_PROJECT_ID: ${{ secrets.VITE_APPWRITE_PROJECT_ID }}
-      VITE_APPWRITE_ENDPOINT: ${{ secrets.VITE_APPWRITE_ENDPOINT }}
-      VITE_APPWRITE_DBID: ${{ secrets.VITE_APPWRITE_DBID }}
-      VITE_APPWRITE_FOODENTRIESID: ${{ secrets.VITE_APPWRITE_FOODENTRIESID }}
-      VITE_APPWRITE_USERSETTINGSID: ${{ secrets.VITE_APPWRITE_USERSETTINGSID }}
-      VITE_APPWRITE_MONTLYCALORIESID: ${{ secrets.VITE_APPWRITE_MONTLYCALORIESID }}
-      VITE_APPWRITE_SHAREDDAYSID: ${{ secrets.VITE_APPWRITE_SHAREDDAYSID }}
-      VITE_APPWRITE_EXERCISEENTRIESID: ${{ secrets.VITE_APPWRITE_EXERCISEENTRIESID }}
-      VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
-    
+  build:
+    runs-on: ubuntu-latest    
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7.0.1
      
     - name: Cache npm dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v6.1.0
       with:
         path: ~/.npm
         key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
@@ -43,28 +32,34 @@ jobs:
     
     - name: Install dependencies
       run: npm ci
-      
+
+    - name: Setup Doppler CLI
+      uses: dopplerhq/cli-action@v4
+
     - name: Build
-      run: npm run build
+      env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_SVC_TOKEN }}
+      run: doppler run --project calories-tracker --config prod -- npm run build
 
-    - name: Install rsync + ssh client
-      run: apt-get update -qq && apt-get install -y -qq rsync openssh-client
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v5.0.0
+      with:
+        path: ./dist
 
-    - name: Configure SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
 
-    - name: Ensure destination folder exists
-      run: |
-        ssh -i ~/.ssh/deploy_key deploy@${{ secrets.DEPLOY_HOST }} \
-          "mkdir -p /srv/sites/${{ env.APP_FOLDER }} && chmod 755 /srv/sites/${{ env.APP_FOLDER }}"
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v5.0.1
 
-    - name: Upload site
-      run: |
-        rsync -avz --delete \
-          -e "ssh -i ~/.ssh/deploy_key" \
-          ./dist/ deploy@${{ secrets.DEPLOY_HOST }}:/srv/sites/${{ env.APP_FOLDER }}/
-
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
