@@ -39,7 +39,7 @@ jobs:
     - name: Build
       env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_SVC_TOKEN }}
-      run: doppler run --project calories-tracker --config prod -- npm run build
+      run: doppler run --project calories-tracker --config prd -- npm run build
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v5.0.0
