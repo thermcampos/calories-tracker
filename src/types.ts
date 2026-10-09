@@ -36,6 +36,7 @@ export type UserSettings = {
   isActive?: boolean;
   timezone?: string;
   autoLoadSuggestions?: boolean;
+  preWorkoutTime?: string;
   updatedAt?: string;
 };
 
@@ -56,6 +57,11 @@ export type SharedDay = {
 };
 
 export type MealPeriod = 'pre-workout' | 'breakfast' | 'second-breakfast' | 'lunch' | 'snacks' | 'dinner' | 'night-snacks';
+
+export type PreWorkoutTime = {
+  before?: MealPeriod;
+  after?: MealPeriod;
+};
 
 export type MealGroup = {
   period: MealPeriod;

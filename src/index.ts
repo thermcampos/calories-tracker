@@ -16,6 +16,7 @@ import {
   FoodStorage,
   MealGroup,
   MealPeriod,
+  PreWorkoutTime,
   UserSettings,
 } from './types.js';
 import { AppwriteAuth, AppwriteDB } from './appwrite.js';
@@ -335,9 +336,11 @@ async function initTimezone() {
     const globalSettings = allDocs.find((d: any) => !d.goalName);
     appState.userTimezone = globalSettings?.timezone ?? '';
     autoLoadSuggestions = globalSettings?.autoLoadSuggestions ?? true;
+    appState.preWorkoutTime = parsePreWorkoutTime(globalSettings?.preWorkoutTime);
   } catch {
     appState.userTimezone = '';
     autoLoadSuggestions = true;
+    appState.preWorkoutTime = undefined;
   }
   
   // Initialize suggestions panel visibility based on auto-load preference
@@ -554,6 +557,76 @@ async function handleSaveSettings(e: SubmitEvent) {
   }
 }
 
+function isValidBaseMealPeriod(value: string): value is MealPeriod {
+  return BASE_MEAL_PERIODS.includes(value as MealPeriod);
+}
+
+async function handleSaveWorkoutTime(e: SubmitEvent) {
+  e.preventDefault();
+  showLoading();
+
+  try {
+    const before = (document.getElementById('workoutBefore') as HTMLSelectElement).value as MealPeriod | '';
+    const after = (document.getElementById('workoutAfter') as HTMLSelectElement).value as MealPeriod | '';
+
+    if (before && !isValidBaseMealPeriod(before)) {
+      hideLoading();
+      swal('Oops', 'Before period is not valid.', 'warning');
+      return;
+    }
+
+    if (after && !isValidBaseMealPeriod(after)) {
+      hideLoading();
+      swal('Oops', 'After period is not valid.', 'warning');
+      return;
+    }
+
+    if (before && after && before === after) {
+      hideLoading();
+      swal('Oops', 'Before and after periods must be different.', 'warning');
+      return;
+    }
+
+    if (before && after) {
+      const beforeIndex = BASE_MEAL_PERIODS.indexOf(before);
+      const afterIndex = BASE_MEAL_PERIODS.indexOf(after);
+      if (afterIndex >= beforeIndex) {
+        hideLoading();
+        swal('Oops', 'After period must come before Before period.', 'warning');
+        return;
+      }
+    }
+
+    const value: PreWorkoutTime = {};
+    if (before) value.before = before;
+    if (after) value.after = after;
+
+    const payload = Object.keys(value).length > 0
+      ? { preWorkoutTime: JSON.stringify(value) }
+      : { preWorkoutTime: '' };
+
+    const allDocs = await AppwriteDB.getUserSettings();
+    const globalDoc = allDocs.find((d: any) => !d.goalName);
+
+    if (globalDoc) {
+      await AppwriteDB.updateUserSettings(globalDoc.$id, payload);
+    } else {
+      await AppwriteDB.saveUserSettings(payload);
+    }
+
+    appState.preWorkoutTime = value;
+    hideLoading();
+    selectDate(selectedDate);
+    swal('Success', 'Workout time saved!', 'success');
+  } catch (error) {
+    hideLoading();
+    console.error('Saving workout time error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Saving failed: ' + error.message, 'error');
+    }
+  }
+}
+
 function updateCacheStats() {
   try {
     const stats = getCacheStats();
@@ -646,6 +719,9 @@ async function toggleSettingsView() {
           autoLoadSuggestionsCheckbox.checked = globalSettings.autoLoadSuggestions ?? true;
         }
         autoLoadSuggestions = globalSettings.autoLoadSuggestions ?? true;
+        const workoutTime = parsePreWorkoutTime(globalSettings?.preWorkoutTime);
+        (document.getElementById('workoutBefore') as HTMLSelectElement).value = workoutTime.before ?? '';
+        (document.getElementById('workoutAfter') as HTMLSelectElement).value = workoutTime.after ?? '';
       } else {
         getInputById('bodyWeight').value = '';
         getInputById('height').value = '';
@@ -657,6 +733,8 @@ async function toggleSettingsView() {
           autoLoadSuggestionsCheckbox.checked = true;
         }
         autoLoadSuggestions = true;
+        (document.getElementById('workoutBefore') as HTMLSelectElement).value = '';
+        (document.getElementById('workoutAfter') as HTMLSelectElement).value = '';
       }
 
       const goals: UserSettings[] = allDocs
@@ -1449,6 +1527,7 @@ const setupEventListeners = () => {
   
   // Settings form
   document.getElementById('settingsForm')?.addEventListener('submit', handleSaveSettings);
+  document.getElementById('workoutTimeForm')?.addEventListener('submit', handleSaveWorkoutTime);
 
   // BMI calculator - recalculate on input change
   getInputById('bodyWeight').addEventListener('change', () => {
@@ -2207,6 +2286,38 @@ function getMealLabel(period: MealPeriod): string {
   return labels[period];
 }
 
+const BASE_MEAL_PERIODS: MealPeriod[] = ['breakfast', 'second-breakfast', 'lunch', 'snacks', 'dinner', 'night-snacks'];
+
+function parsePreWorkoutTime(value?: string): PreWorkoutTime {
+  try {
+    if (!value) return {};
+    const parsed = JSON.parse(value);
+    return {
+      before: BASE_MEAL_PERIODS.includes(parsed.before) ? parsed.before : undefined,
+      after: BASE_MEAL_PERIODS.includes(parsed.after) ? parsed.after : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function getOrderedMealPeriods(preWorkoutTime?: PreWorkoutTime): MealPeriod[] {
+  const { before, after } = preWorkoutTime ?? {};
+  let insertIndex = 0;
+
+  if (before && after) {
+    insertIndex = BASE_MEAL_PERIODS.indexOf(before);
+  } else if (before) {
+    insertIndex = BASE_MEAL_PERIODS.indexOf(before);
+  } else if (after) {
+    insertIndex = BASE_MEAL_PERIODS.indexOf(after) + 1;
+  }
+
+  if (insertIndex < 0) insertIndex = 0;
+
+  return [...BASE_MEAL_PERIODS.slice(0, insertIndex), 'pre-workout', ...BASE_MEAL_PERIODS.slice(insertIndex)];
+}
+
 function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
   // Initialize all meal groups
   const groups: Record<MealPeriod, MealGroup> = {
@@ -2293,10 +2404,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
   });
 
   // Return only groups that have entries, in chronological order
-  const orderedPeriods: MealPeriod[] = [
-    'pre-workout',
-    'breakfast', 'second-breakfast', 'lunch', 'snacks', 'dinner', 'night-snacks'
-  ];
+  const orderedPeriods = getOrderedMealPeriods(appState.preWorkoutTime);
 
   return orderedPeriods
     .map(period => groups[period])

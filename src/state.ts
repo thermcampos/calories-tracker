@@ -1,4 +1,4 @@
-import { DailyTotalCalories, FoodItem, SharedDay } from "./types";
+import { DailyTotalCalories, FoodItem, PreWorkoutTime, SharedDay } from "./types";
 
 interface AppState {
   currentHighlightIndex: number;
@@ -9,6 +9,7 @@ interface AppState {
   sharedData: SharedDay | null;
   userTimezone: string;
   todayDateString: string;
+  preWorkoutTime?: PreWorkoutTime;
 }
 
 export const appState: AppState = {
