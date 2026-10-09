@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const isDev = process.env.VITE_NGROK != undefined;
+const baseUrl = isDev ? '/' : '/calories-tracker/';
+console.log(`baseUrl=${baseUrl}`);
+
 export default defineConfig({
-  base: '/calories-tracker/',
+  base: baseUrl,
   include: ['src', 'vite-end.d.ts'],
 
   plugins: [
@@ -18,24 +22,24 @@ export default defineConfig({
         background_color: '#121212',
         display: 'standalone', // CRITICAL: Enables fullscreen
         orientation: 'portrait',
-        scope: '/calories-tracker/',
-        start_url: '/calories-tracker/',
+        scope: baseUrl,
+        start_url: baseUrl,
 
         icons: [
           {
-            src: '/calories-tracker/assets/apple-icon-180x180.png',
+            src: `${baseUrl}assets/apple-icon-180x180.png`,
             sizes: '180x180',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/calories-tracker/assets/android-icon-192x192.png',
+            src: `${baseUrl}assets/android-icon-192x192.png`,
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: '/calories-tracker/assets/icon-512x512.png',
+            src: `${baseUrl}assets/icon-512x512.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

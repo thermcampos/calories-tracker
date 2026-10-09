@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  dot-env:
+    desc: Download and save to a .env file all secrets from Doppler
+    cmds:
+      - doppler secrets download --project calories-tracker --config dev --no-file --format env > .env
+
+  dev-up:
+    desc: Starts local app
+    deps: [dot-env]
+    cmds:
+      - doppler run --project calories-tracker --config dev -- docker compose up -d
+
+  dev-down:
+    desc: Stops local app
+    cmds:
+      - doppler run --project calories-tracker --config dev -- docker compose down
+
+  build:
+    desc: Builds the app for production
+    deps: [dot-env]
+    cmds:
+      - export $(cat .env | xargs) && npm run build
