@@ -83,6 +83,9 @@ let isSuggestionsDismissed = false;
 // User preference for auto-loading suggestions
 let autoLoadSuggestions = true;
 
+// Local cache of food entries for the selected date
+let currentFoodEntries: FoodStorage[] = [];
+
 function formatDateForInput(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -515,26 +518,33 @@ function setupBMICalculator() {
 
 async function handleSaveSettings(e: SubmitEvent) {
   e.preventDefault();
-  showLoading();
+
+  const bodyWeight = getInputById('bodyWeight').value;
+  const height = getInputById('height').value;
+  const bmi = getInputById('bmi').value;
+  const bmiResult = getInputById('bmiResult');
+  const timezone = getInputById('timezone').value;
+  const autoLoadSuggestionsCheckbox = document.getElementById('autoLoadSuggestions') as HTMLInputElement;
+
+  const metricsData = {
+    bodyWeight: bodyWeight ? parseFloat(bodyWeight) : undefined,
+    height: height ? parseFloat(height) : undefined,
+    bmi: bmi ? parseFloat(bmi) : undefined,
+    bmiResult: bmiResult ? bmiResult.value : undefined,
+    timezone: timezone || undefined,
+    autoLoadSuggestions: autoLoadSuggestionsCheckbox?.checked ?? true,
+  };
+
+  const previousTimezone = appState.userTimezone;
+  const previousAutoLoadSuggestions = autoLoadSuggestions;
+
+  appState.userTimezone = timezone;
+  autoLoadSuggestions = metricsData.autoLoadSuggestions;
+
+  toggleSettingsView();
+  selectDate(selectedDate);
 
   try {
-    const bodyWeight = getInputById('bodyWeight').value;
-    const height = getInputById('height').value;
-    const bmi = getInputById('bmi').value;
-    const bmiResult = getInputById('bmiResult');
-    const timezone = getInputById('timezone').value;
-    const autoLoadSuggestionsCheckbox = document.getElementById('autoLoadSuggestions') as HTMLInputElement;
-
-    const metricsData = {
-      bodyWeight: bodyWeight ? parseFloat(bodyWeight) : undefined,
-      height: height ? parseFloat(height) : undefined,
-      bmi: bmi ? parseFloat(bmi) : undefined,
-      bmiResult: bmiResult ? bmiResult.value : undefined,
-      timezone: timezone || undefined,
-      autoLoadSuggestions: autoLoadSuggestionsCheckbox?.checked ?? true,
-    };
-
-    // Find existing global settings doc (no goalName) and update it, or create new one
     const allDocs = await AppwriteDB.getUserSettings();
     const globalDoc = allDocs.find((d: any) => !d.goalName);
 
@@ -543,13 +553,10 @@ async function handleSaveSettings(e: SubmitEvent) {
     } else {
       await AppwriteDB.saveUserSettings(metricsData);
     }
-
-    appState.userTimezone = timezone;
-    hideLoading();
-    toggleSettingsView();
-    selectDate(selectedDate);
   } catch (error) {
-    hideLoading();
+    appState.userTimezone = previousTimezone;
+    autoLoadSuggestions = previousAutoLoadSuggestions;
+    selectDate(selectedDate);
     console.error('Saving error:', error);
     if (error instanceof Error) {
       swal('Oh no!', 'Saving failed: ' + error.message, 'error');
@@ -563,44 +570,43 @@ function isValidBaseMealPeriod(value: string): value is MealPeriod {
 
 async function handleSaveWorkoutTime(e: SubmitEvent) {
   e.preventDefault();
-  showLoading();
+
+  const before = (document.getElementById('workoutBefore') as HTMLSelectElement).value as MealPeriod | '';
+  const after = (document.getElementById('workoutAfter') as HTMLSelectElement).value as MealPeriod | '';
+
+  if (before && !isValidBaseMealPeriod(before)) {
+    swal('Oops', 'Before period is not valid.', 'warning');
+    return;
+  }
+
+  if (after && !isValidBaseMealPeriod(after)) {
+    swal('Oops', 'After period is not valid.', 'warning');
+    return;
+  }
+
+  if (before && after && before === after) {
+    swal('Oops', 'Before and after periods must be different.', 'warning');
+    return;
+  }
+
+  if (before && after) {
+    const beforeIndex = BASE_MEAL_PERIODS.indexOf(before);
+    const afterIndex = BASE_MEAL_PERIODS.indexOf(after);
+    if (afterIndex >= beforeIndex) {
+      swal('Oops', 'After period must come before Before period.', 'warning');
+      return;
+    }
+  }
+
+  const value: PreWorkoutTime = {};
+  if (before) value.before = before;
+  if (after) value.after = after;
+
+  const previousPreWorkoutTime = appState.preWorkoutTime;
+  appState.preWorkoutTime = value;
+  selectDate(selectedDate);
 
   try {
-    const before = (document.getElementById('workoutBefore') as HTMLSelectElement).value as MealPeriod | '';
-    const after = (document.getElementById('workoutAfter') as HTMLSelectElement).value as MealPeriod | '';
-
-    if (before && !isValidBaseMealPeriod(before)) {
-      hideLoading();
-      swal('Oops', 'Before period is not valid.', 'warning');
-      return;
-    }
-
-    if (after && !isValidBaseMealPeriod(after)) {
-      hideLoading();
-      swal('Oops', 'After period is not valid.', 'warning');
-      return;
-    }
-
-    if (before && after && before === after) {
-      hideLoading();
-      swal('Oops', 'Before and after periods must be different.', 'warning');
-      return;
-    }
-
-    if (before && after) {
-      const beforeIndex = BASE_MEAL_PERIODS.indexOf(before);
-      const afterIndex = BASE_MEAL_PERIODS.indexOf(after);
-      if (afterIndex >= beforeIndex) {
-        hideLoading();
-        swal('Oops', 'After period must come before Before period.', 'warning');
-        return;
-      }
-    }
-
-    const value: PreWorkoutTime = {};
-    if (before) value.before = before;
-    if (after) value.after = after;
-
     const payload = Object.keys(value).length > 0
       ? { preWorkoutTime: JSON.stringify(value) }
       : { preWorkoutTime: '' };
@@ -613,13 +619,9 @@ async function handleSaveWorkoutTime(e: SubmitEvent) {
     } else {
       await AppwriteDB.saveUserSettings(payload);
     }
-
-    appState.preWorkoutTime = value;
-    hideLoading();
-    selectDate(selectedDate);
-    swal('Success', 'Workout time saved!', 'success');
   } catch (error) {
-    hideLoading();
+    appState.preWorkoutTime = previousPreWorkoutTime;
+    selectDate(selectedDate);
     console.error('Saving workout time error:', error);
     if (error instanceof Error) {
       swal('Oh no!', 'Saving failed: ' + error.message, 'error');
@@ -1873,6 +1875,7 @@ async function setFoodToEdit(foodId: string) {
   try {
     // get food item
     const entries = await AppwriteDB.getFoodEntries(selectedDate);
+    console.log('Editing foodId:', foodId, 'Server entries:', entries.map((e: any) => ({ $id: e.$id, name: e.name })));
     const foodToEdit = entries.filter(entry => entry.$id === foodId);
     if (foodToEdit.length === 0) {
       swal('Hey!', 'Unable to get food entry from server', 'error');
@@ -2046,64 +2049,74 @@ const updateFood = async () => {
   }
 
   const gramAmount = getInputById('gramAmount');
-    
+
   if (!selectedFood || !gramAmount.value) {
     swal('Hey!', 'Please select a food item and enter the amount', 'error');
     return;
   }
 
-  showLoading();
+  const foodId = getInputById('foodIdToUpdate').value;
+  const grams: number = parseFloat(gramAmount.value);
+  const foodData: FoodItem = getFoodItemByName(selectedFood.name);
+
+  // Current date, with timezone
+  const date = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString();
+
+  // Calculate nutrition for the amount
+  const proportion: FoodItem = getFoodData(grams, foodData);
+
+  const entryIndex = currentFoodEntries.findIndex(e => e.id === foodId);
+  const originalEntry = entryIndex !== -1 ? { ...currentFoodEntries[entryIndex] } : null;
+  const oldCalories = originalEntry ? originalEntry.calories : parseInt(getInputById('foodCaloriesToUpdate').value);
+
+  const entry: FoodStorage = {
+    ...(originalEntry || {}),
+    id: foodId,
+    name: selectedFood.name,
+    grams: grams,
+    calories: proportion.info.calories,
+    protein: proportion.info.protein,
+    fat: proportion.info.fat,
+    carbs: proportion.info.carbs,
+    fiber: proportion.info.fiber,
+    date: date.split('T')[0],
+    alkaline: selectedFood.info.alkaline,
+    periodGroup: getInputById('periodGroup').value,
+  };
+
+  if (entryIndex !== -1) {
+    currentFoodEntries[entryIndex] = entry;
+  }
+
+  renderFoodEntries(currentFoodEntries);
+  clearEditing();
 
   try {
-    const foodId = getInputById('foodIdToUpdate').value;
-    const grams: number = parseFloat(gramAmount.value);
-    const foodData: FoodItem = getFoodItemByName(selectedFood.name);
+    const { id: _id, ...entryPayload } = entry;
+    console.log('Updating foodId:', foodId, 'Payload:', entryPayload);
+    await AppwriteDB.updateFoodEntry(foodId, entryPayload as FoodStorage);
 
-    // Current date, with timezone
-    const date = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString();
-
-    // Calculate nutrition for the amount
-    const proportion: FoodItem = getFoodData(grams, foodData);
-    const entry: FoodStorage = {
-      name: selectedFood.name,
-      grams: grams,
-      calories: proportion.info.calories,
-      protein: proportion.info.protein,
-      fat: proportion.info.fat,
-      carbs: proportion.info.carbs,
-      fiber: proportion.info.fiber,
-      date: date.split('T')[0],
-      alkaline: selectedFood.info.alkaline,
-      periodGroup: getInputById('periodGroup').value,
-      time: '',
-    };
-
-    console.log('to update', entry)
-
-    // Save to Appwrite
-    await AppwriteDB.updateFoodEntry(foodId, entry);
-
-    // Save or update monthly total calories
     const monthlyDocumentId = getDocumentIdForToday();
     if (!monthlyDocumentId?.documentId) {
       const monthlyCreated = await AppwriteDB.createMonthlyCaloryForDay(selectedDate, entry.calories);
       updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
     } else {
-      const gramsToRemove = parseInt(getInputById('foodCaloriesToUpdate').value);
-      const totalCalories = monthlyDocumentId?.totalCalories + entry.calories - gramsToRemove;
-      const monthlyUpdated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId?.documentId, selectedDate, totalCalories);
+      const totalCalories = monthlyDocumentId.totalCalories + entry.calories - oldCalories;
+      const monthlyUpdated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
       updateDocumentIdForToday(monthlyUpdated.$id, monthlyUpdated.totalCalories);
     }
-    delay(QUICK_DELAY);
-    clearEditing();
-    selectDate(selectedDate);
+
+    await delay(QUICK_DELAY);
+    renderCalendar();
   } catch (error) {
-      console.error('Update food error:', error);
-      if (error instanceof Error) {
-        swal('Oh no!', 'Failed to update food entry: ' + error.message, 'error');
-      }
-  } finally {
-      hideLoading();
+    if (originalEntry && entryIndex !== -1) {
+      currentFoodEntries[entryIndex] = originalEntry;
+    }
+    renderFoodEntries(currentFoodEntries);
+    console.error('Update food error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to update food entry: ' + error.message, 'error');
+    }
   }
 }
 
@@ -2176,72 +2189,71 @@ const addFood = async () => {
   }
 
   const gramAmount = getInputById('gramAmount');
-    
+
   if (!selectedFood || !gramAmount.value) {
     swal('Hey!', 'Please select a food item and enter the amount', 'error');
     return;
   }
 
-  showLoading();
+  const grams: number = parseFloat(gramAmount.value);
+  const foodData: FoodItem = getFoodItemByName(selectedFood.name);
+
+  // Current date, with timezone
+  const date = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString();
+
+  // Calculate nutrition for the amount
+  const proportion: FoodItem = getFoodData(grams, foodData);
+  const entry: FoodStorage = {
+    id: `optimistic-${Date.now()}`,
+    name: selectedFood.name,
+    grams: grams,
+    calories: proportion.info.calories,
+    protein: proportion.info.protein,
+    fat: proportion.info.fat,
+    carbs: proportion.info.carbs,
+    fiber: proportion.info.fiber,
+    date: date.split('T')[0],
+    alkaline: selectedFood.info.alkaline,
+    time: (await getCurrentDate(appState.userTimezone)).timeString,
+    periodGroup: getInputById('periodGroup').value
+  };
+
+  currentFoodEntries.push(entry);
+  renderFoodEntries(currentFoodEntries);
+
+  // Reset form
+  selectedFood = null;
+  getInputById('foodSearchInput').value = '';
+  gramAmount.value = '100';
+  getInputById('periodGroup').value = '';
+  showFoodPreview(false);
+  hideAINutritionCard();
 
   try {
-    const grams: number = parseFloat(gramAmount.value);
-    const foodData: FoodItem = getFoodItemByName(selectedFood.name);
+    const { id: _id, ...entryPayload } = entry;
+    const savedEntry = await AppwriteDB.saveFoodEntry(entryPayload as FoodStorage);
+    entry.id = savedEntry.$id;
+    console.log('Food saved, new id:', entry.id);
+    renderFoodEntries(currentFoodEntries);
 
-    // Current date, with timezone
-    const date = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString();
-
-    // Calculate nutrition for the amount
-    const proportion: FoodItem = getFoodData(grams, foodData);
-    const entry: FoodStorage = {
-      name: selectedFood.name,
-      grams: grams,
-      calories: proportion.info.calories,
-      protein: proportion.info.protein,
-      fat: proportion.info.fat,
-      carbs: proportion.info.carbs,
-      fiber: proportion.info.fiber,
-      date: date.split('T')[0],
-      alkaline: selectedFood.info.alkaline,
-      time: (await getCurrentDate(appState.userTimezone)).timeString,
-      periodGroup: getInputById('periodGroup').value
-    };
-
-    // Save to Appwrite
-    const savedEntry = await AppwriteDB.saveFoodEntry(entry);
-
-    // Save or update monthly total calories
     const monthlyDocumentId = getDocumentIdForToday();
     if (!monthlyDocumentId?.documentId) {
-      // create
       const monthlyCreated = await AppwriteDB.createMonthlyCaloryForDay(selectedDate, entry.calories);
       updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
     } else {
-      // update
-      const totalCalories = monthlyDocumentId?.totalCalories + entry.calories;
-      const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId?.documentId, selectedDate, totalCalories);
+      const totalCalories = monthlyDocumentId.totalCalories + entry.calories;
+      const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
       updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
     }
 
-    // Reload all entries to properly group them (this also updates totals and macros)
-    await loadFoodEntries(selectedDate);
-
-    // Reset form
-    selectedFood = null;
-    getInputById('foodSearchInput').value = '';
-    gramAmount.value = '100';
-    getInputById('periodGroup').value = '';
-    showFoodPreview(false);
-    hideAINutritionCard();
-    await delay(QUICK_DELAY);
     renderCalendar();
   } catch (error) {
-      console.error('Add food error:', error);
-      if (error instanceof Error) {
-        swal('Oh no!', 'Failed to add food entry: ' + error.message, 'error');
-      }
-  } finally {
-      hideLoading();
+    currentFoodEntries = currentFoodEntries.filter(e => e.id !== entry.id);
+    renderFoodEntries(currentFoodEntries);
+    console.error('Add food error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to add food entry: ' + error.message, 'error');
+    }
   }
 }
 
@@ -2420,65 +2432,22 @@ async function loadFoodEntries(date: Date) {
   try {
     const entries = await AppwriteDB.getFoodEntries(date);
 
-    const container = getDivById('foodCardsContainer');
-    container.innerHTML = '';
+    currentFoodEntries = entries.map(entry => ({
+      id: entry.$id,
+      name: entry.name,
+      grams: entry.grams,
+      calories: entry.calories,
+      protein: entry.protein,
+      fat: entry.fat,
+      carbs: entry.carbs,
+      fiber: entry.fiber,
+      time: entry.time,
+      date: entry.date,
+      alkaline: entry.alkaline,
+      periodGroup: entry.periodGroup,
+    }));
 
-    if (entries.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">🍽️</div>
-          <div>No food items logged yet.</div>
-          <div style="margin-top: 8px; font-size: 14px; opacity: 0.7;">Add your first item to get started!</div>
-        </div>
-      `;
-    } else {
-      // Convert entries to FoodStorage format
-      const foodEntries: FoodStorage[] = entries.map(entry => ({
-        id: entry.$id,
-        name: entry.name,
-        grams: entry.grams,
-        calories: entry.calories,
-        protein: entry.protein,
-        fat: entry.fat,
-        carbs: entry.carbs,
-        fiber: entry.fiber,
-        time: entry.time,
-        date: entry.date,
-        alkaline: entry.alkaline,
-        periodGroup: entry.periodGroup,
-      }));
-
-      // Group by meal period
-      const mealGroups = groupFoodEntriesByMeal(foodEntries);
-
-      // Render each meal group
-      mealGroups.forEach(group => {
-        renderMealGroup(group);
-      });
-
-      setupEditAndDeleteEvents();
-      updateTotalCalories();
-    }
-
-    // Update counters
-    let totalCalories = 0;
-    let totalProtein = 0;
-    let totalFat = 0;
-    let totalCarbs = 0;
-    let totalFiber = 0;
-
-    entries.forEach(entry => {
-      totalCalories += entry.calories;
-      totalProtein += entry.protein;
-      totalFat += entry.fat;
-      totalCarbs += entry.carbs;
-      totalFiber += entry.fiber;
-    });
-
-    getDivById('proteinValue').textContent = (Math.round(totalProtein * 10) / 10).toString();
-    getDivById('fatValue').textContent = (Math.round(totalFat * 10) / 10).toString();
-    getDivById('carboValue').textContent = (Math.round(totalCarbs * 10) / 10).toString();
-    getDivById('fiberValue').textContent = (Math.round(totalFiber * 10) / 10).toString();
+    renderFoodEntries(currentFoodEntries);
 
     // Update goals
     const allDocs = await AppwriteDB.getUserSettings();
@@ -2542,6 +2511,50 @@ async function loadFoodEntries(date: Date) {
   } finally {
       hideLoading();
   }
+}
+
+function renderFoodEntries(entries: FoodStorage[]) {
+  const container = getDivById('foodCardsContainer');
+  container.innerHTML = '';
+
+  if (entries.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🍽️</div>
+        <div>No food items logged yet.</div>
+        <div style="margin-top: 8px; font-size: 14px; opacity: 0.7;">Add your first item to get started!</div>
+      </div>
+    `;
+  } else {
+    const mealGroups = groupFoodEntriesByMeal(entries);
+
+    mealGroups.forEach(group => {
+      renderMealGroup(group);
+    });
+
+    setupEditAndDeleteEvents();
+    updateTotalCalories();
+  }
+
+  // Update counters
+  let totalCalories = 0;
+  let totalProtein = 0;
+  let totalFat = 0;
+  let totalCarbs = 0;
+  let totalFiber = 0;
+
+  entries.forEach(entry => {
+    totalCalories += entry.calories;
+    totalProtein += entry.protein;
+    totalFat += entry.fat;
+    totalCarbs += entry.carbs;
+    totalFiber += entry.fiber;
+  });
+
+  getDivById('proteinValue').textContent = (Math.round(totalProtein * 10) / 10).toString();
+  getDivById('fatValue').textContent = (Math.round(totalFat * 10) / 10).toString();
+  getDivById('carboValue').textContent = (Math.round(totalCarbs * 10) / 10).toString();
+  getDivById('fiberValue').textContent = (Math.round(totalFiber * 10) / 10).toString();
 }
 
 // ---- Exercise Check-in ----
@@ -2793,39 +2806,38 @@ async function handleDeleteFood(documentId: string) {
   });
   
   if (!willDelete) return;
-  
-  showLoading();
-  
+
+  const entryIndex = currentFoodEntries.findIndex(e => e.id === documentId);
+  const deletedEntry = entryIndex !== -1 ? currentFoodEntries[entryIndex] : null;
+  const existingToDelete = deletedEntry ? deletedEntry.calories : 0;
+
+  if (entryIndex !== -1) {
+    currentFoodEntries.splice(entryIndex, 1);
+  }
+
+  renderFoodEntries(currentFoodEntries);
+
   try {
-    // Delete from Appwrite
     await AppwriteDB.deleteFoodEntry(documentId);
 
-    // Delete from monthly total
     const monthlyDocumentId = getDocumentIdForToday();
     if (monthlyDocumentId?.documentId) {
-      // find calories from document
-      const targetDiv = document.querySelector(`.food-card[data-id="${documentId}"]`);
-      let existingToDelete = 0;
-      if (targetDiv) {
-        const divCalories = targetDiv.querySelectorAll('.calories-display');
-        if (divCalories && divCalories.length > 0) {
-          existingToDelete = parseInt(divCalories[0].innerHTML.replace(' cal', ''));
-        }
-      }
-      const totalCalories = monthlyDocumentId?.totalCalories - existingToDelete;
-      const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId?.documentId, selectedDate, totalCalories);
+      const totalCalories = monthlyDocumentId.totalCalories - existingToDelete;
+      const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
       updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
       await delay(QUICK_DELAY);
     }
-    
-    selectDate(selectedDate);
+
+    renderCalendar();
   } catch (error) {
+    if (deletedEntry && entryIndex !== -1) {
+      currentFoodEntries.splice(entryIndex, 0, deletedEntry);
+    }
+    renderFoodEntries(currentFoodEntries);
     console.error('Delete food error:', error);
     if (error instanceof Error) {
       swal('Oh no!', 'Failed to delete food entry: ' + error.message, 'error');
     }
-  } finally {
-    hideLoading();
   }
 }
 
