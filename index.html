@@ -303,9 +303,20 @@
                         <label for="gramAmount">Amount (grams)</label>
                         <input type="number" id="gramAmount" min="1" step="1" value="100">
                     </div>
-                    <div class="form-group hidden" id="foodTimeGroup">
-                        <label for="foodEntryTime">Time</label>
-                        <input type="time" id="foodEntryTime">
+                </div>
+                <div class="add-food-form-btn mt-2 ">
+                    <div class="form-group">
+                        <label for="periodGroup">Period</label>
+                        <select id="periodGroup">
+                            <option value="">Period</option>
+                            <option value="pre-workout">Pre-Workout</option>
+                            <option value="breakfast">Brekfast</option>
+                            <option value="second-breakfast">Second Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="snacks">Snacks</option>
+                            <option value="dinner">Dinner</option>
+                            <option value="night-snacks">Night Snacks</option>
+                        </select>
                     </div>
                     <button class="add-btn" id="add-food-btn">Add Food</button>
                     <button class="cancel-btn" id="cancel-food-btn">Cancel</button>

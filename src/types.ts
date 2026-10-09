@@ -18,6 +18,7 @@ export type FoodStorage = {
   time: string;
   date: string;
   alkaline: boolean | null;
+  periodGroup: string | null;
 };
 
 export type UserSettings = {

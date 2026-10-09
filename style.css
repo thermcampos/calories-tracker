@@ -540,9 +540,20 @@ h1 {
 
 .add-food-form {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr auto;
+    grid-template-columns: 3fr 1fr auto;
     gap: 15px;
     align-items: end;
+}
+
+.add-food-form-btn {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 15px;
+    align-items: end;
+}
+
+.mt-2 {
+    margin-top: 16px;
 }
 
 .display-none {
@@ -565,7 +576,7 @@ label {
     color: #b0b0b0;
 }
 
-#gramAmount {
+#gramAmount, #periodGroup {
     width: 100%;
     padding: 15px 20px;
     border: 2px solid #404040;
@@ -579,7 +590,7 @@ label {
     outline: none;
 }
 
-#gramAmount:focus {
+#gramAmount:focus, #periodGroup:focus {
     border-color: #6B8DD6;
     box-shadow: 0 0 0 3px rgba(107, 141, 214, 0.2);
 }
@@ -1155,6 +1166,15 @@ label {
     .add-food-form {
         grid-template-columns: 1fr;
         gap: 15px;
+    }
+
+    .add-food-form-btn {
+        grid-template-columns: 1fr;
+    }
+
+    .add-food-form-btn .add-btn,
+    .add-food-form-btn .cancel-btn {
+        width: 100%;
     }
 
     .food-table {

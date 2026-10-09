@@ -740,6 +740,7 @@ async function fetchCaloriesCurrentMonth() {
 function clearEditing() {
   getInputById('foodSearchInput').value = '';
   getInputById('gramAmount').value = '100';
+  getInputById('periodGroup').value = '';
   showFoodPreview(false);
   hideAINutritionCard();
   hideAlternativesContainer();
@@ -752,10 +753,6 @@ function clearEditing() {
   getInputById('foodTimeToUpdate').value = '';
   getInputById('foodCaloriesToUpdate').value = '';
 
-  // Hide and reset the visible time input (only shown when editing)
-  getInputById('foodEntryTime').value = '';
-  getDivById('foodTimeGroup').classList.add('hidden');
-
   selectedFood = null;
 }
 
@@ -763,6 +760,7 @@ function clearEditing() {
 function clearAppData() {
   getDivById('caloriesCounter').textContent = '0';
   getInputById('foodSearchInput').value = '';
+  getInputById('periodGroup').value = '';
   getInputById('gramAmount').value = '100';
   getDivById('foodCardsContainer').innerHTML = `
       <div class="empty-state">
@@ -1141,7 +1139,7 @@ function handleAlternativesCheckboxChange(e: Event) {
   }
 }
 
-const previewCalories = (foodSelected?: FoodItem) => {
+const previewCalories = async (foodSelected?: FoodItem) => {
   const foodToPreview = foodSelected ?? selectedFood;
   const gramAmount = getInputById('gramAmount');
   
@@ -1163,6 +1161,8 @@ const previewCalories = (foodSelected?: FoodItem) => {
   getDivById('fatValuePreview').textContent = (Math.round(proportion.info.fat * 10) / 10).toString ();
   getDivById('carboValuePreview').textContent = (Math.round(proportion.info.carbs * 10) / 10).toString ();
   getDivById('fiberValuePreview').textContent = (Math.round(proportion.info.fiber * 10) / 10).toString ();
+  const currTime: CurrentDateResult = await getCurrentDate(appState.userTimezone);
+  getInputById('periodGroup').value = getMealPeriod(currTime.timeString);
 
   showFoodPreview(true);
   updateAlternativesDisplay();
@@ -1805,7 +1805,7 @@ async function setFoodToEdit(foodId: string) {
     selectedFood = foodData;
     getInputById('foodSearchInput').value = foodToEdit[0].name;
     getInputById('gramAmount').value = foodToEdit[0].grams;
-    previewCalories(foodData)
+    await previewCalories(foodData)
 
     getDivById('add-foot-title').innerHTML = 'Edit Food Entry';
     getButtonById('add-food-btn').innerHTML = 'Save Food';
@@ -1813,10 +1813,7 @@ async function setFoodToEdit(foodId: string) {
     getInputById('foodIdToUpdate').value = foodId;
     getInputById('foodTimeToUpdate').value = foodToEdit[0].time;
     getInputById('foodCaloriesToUpdate').value = foodToEdit[0].calories;
-
-    // Show the time input and populate it with the existing time
-    getDivById('foodTimeGroup').classList.remove('hidden');
-    getInputById('foodEntryTime').value = foodToEdit[0].time;
+    getInputById('periodGroup').value = foodToEdit[0].periodGroup;
 
     // Scroll to top
     const titleDiv = getDivById('add-foot-title') as HTMLElement;
@@ -1998,8 +1995,11 @@ const updateFood = async () => {
       fiber: proportion.info.fiber,
       date: date.split('T')[0],
       alkaline: selectedFood.info.alkaline,
-      time: getInputById('foodEntryTime').value,
+      periodGroup: getInputById('periodGroup').value,
+      time: '',
     };
+
+    console.log('to update', entry)
 
     // Save to Appwrite
     await AppwriteDB.updateFoodEntry(foodId, entry);
@@ -2124,7 +2124,8 @@ const addFood = async () => {
       fiber: proportion.info.fiber,
       date: date.split('T')[0],
       alkaline: selectedFood.info.alkaline,
-      time: (await getCurrentDate(appState.userTimezone)).timeString
+      time: (await getCurrentDate(appState.userTimezone)).timeString,
+      periodGroup: getInputById('periodGroup').value
     };
 
     // Save to Appwrite
@@ -2150,6 +2151,7 @@ const addFood = async () => {
     selectedFood = null;
     getInputById('foodSearchInput').value = '';
     gramAmount.value = '100';
+    getInputById('periodGroup').value = '';
     showFoodPreview(false);
     hideAINutritionCard();
     await delay(QUICK_DELAY);
@@ -2282,7 +2284,7 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
 
   // Group entries and calculate totals
   entries.forEach(entry => {
-    const period = getMealPeriod(entry.time);
+    const period = entry.periodGroup || getMealPeriod(entry.time);
     groups[period].entries.push(entry);
     groups[period].totalCalories += entry.calories;
     groups[period].totalProtein += entry.protein;
@@ -2335,6 +2337,7 @@ async function loadFoodEntries(date: Date) {
         time: entry.time,
         date: entry.date,
         alkaline: entry.alkaline,
+        periodGroup: entry.periodGroup,
       }));
 
       // Group by meal period
