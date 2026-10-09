@@ -4,33 +4,33 @@ export interface CurrentDateResult {
   timeString: string; // "HH:MM"
 }
 
-export async function getCurrentDate(timezone: string): Promise<CurrentDateResult> {
-  if (timezone) {
-    try {
-      const response = await fetch(
-        `https://timeapi.io/api/v1/time/current/zone?timezone=${encodeURIComponent(timezone)}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        // data.date is "YYYY-MM-DD", data.time is "HH:MM:SS.mmm" or "HH:MM"
-        const [year, month, day] = data.date.split('-').map(Number);
-        const dateTime = new Date(year, month - 1, day);
-        const timeParts = data.time.split(':');
-        const timeString = `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
-        return { date: data.date, dateTime, timeString };
-      }
-    } catch (e) {
-      console.warn('timeapi.io request failed, falling back to browser time:', e);
-    }
-  }
-
-  // Fallback: browser local time
+export function getCurrentDate(timezone: string): CurrentDateResult {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const dateTime = new Date(year, now.getMonth(), day);
-  const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const effectiveTimezone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: effectiveTimezone,
+    year: 'numeric',
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  };
+
+  const formatter = new Intl.DateTimeFormat("en-GB", options);
+  const parts = formatter.formatToParts(now);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+
+  const year = parseInt(getPart("year") || "0");
+  const month = parseInt(getPart("month") || "0");
+  const day = parseInt(getPart("day") || "0");
+  const hour = parseInt(getPart("hour") || "0");
+  const minute = parseInt(getPart("minute") || "0");
+
+  const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const dateTime = new Date(year, month - 1, day);
+  const timeString = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+
   return { date, dateTime, timeString };
 }

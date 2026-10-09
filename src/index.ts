@@ -349,7 +349,7 @@ async function initTimezone() {
   // Initialize suggestions panel visibility based on auto-load preference
   initializeSuggestionsPanel();
   
-  const result = await getCurrentDate(appState.userTimezone);
+  const result = getCurrentDate(appState.userTimezone);
   selectedDate = result.dateTime;
   currentViewDate = result.dateTime;
   appState.todayDateString = result.date;
@@ -1219,7 +1219,7 @@ function handleAlternativesCheckboxChange(e: Event) {
   }
 }
 
-const previewCalories = async (foodSelected?: FoodItem) => {
+const previewCalories = (foodSelected?: FoodItem) => {
   const foodToPreview = foodSelected ?? selectedFood;
   const gramAmount = getInputById('gramAmount');
   
@@ -1241,7 +1241,7 @@ const previewCalories = async (foodSelected?: FoodItem) => {
   getDivById('fatValuePreview').textContent = (Math.round(proportion.info.fat * 10) / 10).toString ();
   getDivById('carboValuePreview').textContent = (Math.round(proportion.info.carbs * 10) / 10).toString ();
   getDivById('fiberValuePreview').textContent = (Math.round(proportion.info.fiber * 10) / 10).toString ();
-  const currTime: CurrentDateResult = await getCurrentDate(appState.userTimezone);
+  const currTime: CurrentDateResult = getCurrentDate(appState.userTimezone);
   getInputById('periodGroup').value = getMealPeriod(currTime.timeString);
 
   showFoodPreview(true);
@@ -1875,7 +1875,6 @@ async function setFoodToEdit(foodId: string) {
   try {
     // get food item
     const entries = await AppwriteDB.getFoodEntries(selectedDate);
-    console.log('Editing foodId:', foodId, 'Server entries:', entries.map((e: any) => ({ $id: e.$id, name: e.name })));
     const foodToEdit = entries.filter(entry => entry.$id === foodId);
     if (foodToEdit.length === 0) {
       swal('Hey!', 'Unable to get food entry from server', 'error');
@@ -1887,7 +1886,7 @@ async function setFoodToEdit(foodId: string) {
     selectedFood = foodData;
     getInputById('foodSearchInput').value = foodToEdit[0].name;
     getInputById('gramAmount').value = foodToEdit[0].grams;
-    await previewCalories(foodData)
+    previewCalories(foodData)
 
     getDivById('add-foot-title').innerHTML = 'Edit Food Entry';
     getButtonById('add-food-btn').innerHTML = 'Save Food';
@@ -2093,7 +2092,6 @@ const updateFood = async () => {
 
   try {
     const { id: _id, ...entryPayload } = entry;
-    console.log('Updating foodId:', foodId, 'Payload:', entryPayload);
     await AppwriteDB.updateFoodEntry(foodId, entryPayload as FoodStorage);
 
     const monthlyDocumentId = getDocumentIdForToday();
@@ -2214,7 +2212,7 @@ const addFood = async () => {
     fiber: proportion.info.fiber,
     date: date.split('T')[0],
     alkaline: selectedFood.info.alkaline,
-    time: (await getCurrentDate(appState.userTimezone)).timeString,
+    time: getCurrentDate(appState.userTimezone).timeString,
     periodGroup: getInputById('periodGroup').value
   };
 
@@ -2233,7 +2231,6 @@ const addFood = async () => {
     const { id: _id, ...entryPayload } = entry;
     const savedEntry = await AppwriteDB.saveFoodEntry(entryPayload as FoodStorage);
     entry.id = savedEntry.$id;
-    console.log('Food saved, new id:', entry.id);
     renderFoodEntries(currentFoodEntries);
 
     const monthlyDocumentId = getDocumentIdForToday();
