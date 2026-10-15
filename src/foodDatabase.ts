@@ -6,6 +6,7 @@ export const foodDatabase: FoodItem[] = [
   { name: 'Amêndoas', nameEn: 'Almonds', info: { calories: 581, protein: 18.6, fat: 47.3, carbs: 29.5, fiber: 11.6, category: 'fats', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Amendoin natural', nameEn: 'Natural Peanut', info: { calories: 611, protein: 26, fat: 49, carbs: 16, fiber: 8.5, category: 'fats', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Azeite de Oliva EV', nameEn: 'Extra Virgin Olive Oil', info: { calories: 844, protein: 0, fat: 100, carbs: 0, fiber: 0, category: 'fats', alkaline: false, bestFor: ['lunch', 'dinner'] } },
+  { name: 'Avelã', nameEn: 'Hazelnut', info: { calories: 628, protein: 14.95, fat: 60.75, carbs: 16.7, fiber: 6, category: 'fats', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Castanha de Caju', nameEn: 'Cashew Nut', info: { calories: 570, protein: 18.5, fat: 46.3, carbs: 29.1, fiber: 3.7, category: 'fats', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Castanha do Pará', nameEn: 'Brazil Nut', info: { calories: 643, protein: 14.5, fat: 63.5, carbs: 15.1, fiber: 7.9, category: 'fats', alkaline: false, bestFor: ['breakfast', 'brunch', 'snacks'] } },
   { name: 'Semente de Chia', nameEn: 'Chia Seed', info: { calories: 490, protein: 15.6, fat: 30.7, carbs: 43.8, fiber: 37.7, category: 'fats', alkaline: true, bestFor: ['breakfast', 'brunch'] } },
