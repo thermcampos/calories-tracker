@@ -15,6 +15,7 @@ export default defineConfig({
       includeAssets: ['assets/*.png', 'assets/*.ico', 'assets/*.xml'],
 
       manifest: {
+        id: baseUrl,
         name: 'Food Tracker - Daily Calorie Tracker',
         short_name: 'Food Tracker',
         description: 'Track your nutrition, transform your health. Monitor calories, protein, fat, carbs, and fiber for every meal.',
@@ -36,13 +37,25 @@ export default defineConfig({
             src: `${baseUrl}assets/android-icon-192x192.png`,
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: `${baseUrl}assets/android-icon-192x192.png`,
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
           },
           {
             src: `${baseUrl}assets/icon-512x512.png`,
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: `${baseUrl}assets/icon-512x512.png`,
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
