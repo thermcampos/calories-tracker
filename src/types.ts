@@ -89,6 +89,14 @@ export type ExportDateValidation = {
   message: string
 };
 
+export type RegularItem = {
+  id?: string;
+  name: string;
+  grams: number;
+  periodGroup: string;
+  userId?: string;
+};
+
 export type ExerciseEntry = {
   id?: string;
   name: string;
