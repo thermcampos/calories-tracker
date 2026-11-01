@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Regular items: flag a food entry as "Repeat daily" when adding or editing it. Regular items show up every day as grayed-out planned cards that don't count toward totals until confirmed with the Add button. When editing an entry that matches a regular item, check "Also update regular item" to carry the change over; otherwise only that day's entry changes. Manage them in Settings.
+- `nutrition-info` Appwrite Function: AI nutrition info now goes through a backend function with a cache shared by all users. Moved from Claude Haiku 4.5 to Claude Haiku 5.5.
+
+### Security
+- The Anthropic API key is no longer shipped in the frontend bundle (`VITE_CLAUDE_API_KEY` removed).
 
 ## 2026-08-05
 

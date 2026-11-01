@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-Food Tracker is a client-side PWA for tracking daily food intake, calories, and macronutrients. It is a single-page TypeScript application built with Vite, targeting Brazilian Portuguese users. All data is stored in Appwrite (BaaS). The app also uses Anthropic Claude AI to fetch detailed nutrition info (vitamins, minerals, benefits) for selected foods, with responses cached in `localStorage`.
+Food Tracker is a client-side PWA for tracking daily food intake, calories, and macronutrients. It is a single-page TypeScript application built with Vite, targeting Brazilian Portuguese users. All data is stored in Appwrite (BaaS). The app also uses Anthropic Claude AI, through an Appwrite Function, to fetch detailed nutrition info (vitamins, minerals, benefits) for selected foods, with responses cached in a shared Appwrite collection and in `localStorage`.
 
 - **Stack**: TypeScript, Vite, vanilla HTML/CSS, no framework.
 - **Backend**: Appwrite (auth + document DB).
-- **AI**: Anthropic Claude SDK (`@anthropic-ai/sdk`).
+- **AI**: Anthropic Claude SDK (`@anthropic-ai/sdk`), used only inside the `nutrition-info` Appwrite Function (`functions/nutrition-info`). The frontend never holds the API key.
 - **Deployment**: Static build (`dist/`) deployed via rsync to a VPS (`/srv/sites/calories-tracker`).
 - **Live URL**: https://calories-tracker.lightroasted.vps-kinghost.net
 
@@ -19,6 +19,7 @@ Food Tracker is a client-side PWA for tracking daily food intake, calories, and 
 | `npm run dev` | Start Vite dev server (default port 5173). |
 | `npm run build` | Production build into `dist/`. |
 | `npm run preview` | Preview the production build locally. |
+| `scripts/package-function.sh` | Package the `nutrition-info` function into `dist-functions/nutrition-info.tar.gz` for manual deploy. |
 
 No test suite, no lint script, no formatter configured.
 
@@ -38,7 +39,7 @@ VITE_APPWRITE_MONTLYCALORIESID=
 VITE_APPWRITE_SHAREDDAYSID=
 VITE_APPWRITE_EXERCISEENTRIESID=
 VITE_APPWRITE_REGULARITEMSID=
-VITE_CLAUDE_API_KEY=
+VITE_APPWRITE_NUTRITIONFUNCTIONID=
 ```
 
 **Important**: `VITE_APPWRITE_PROJECT_ID` is also hardcoded in `src/appwrite.ts` (line 9) as `"684ac3bf000ee8950f5a"`. The `client.setProject()` call uses this literal, not the env var. The endpoint and collection IDs do come from env vars.
@@ -56,7 +57,7 @@ calories-tracker/
 │   ├── auth.ts            # Auth UI helpers (show/hide forms, toggle login/register)
 │   ├── state.ts           # Global mutable appState object
 │   ├── foodDatabase.ts    # Hardcoded local food array (per 100g, Brazilian names)
-│   ├── claudeService.ts   # Claude AI nutrition fetcher + localStorage cache
+│   ├── claudeService.ts   # Calls the nutrition-info function + localStorage cache
 │   ├── dateUtils.ts       # Timezone-aware current date via timeapi.io
 │   ├── DomUtils.ts        # Typed DOM getters that throw if element missing
 │   ├── Utils.ts           # UI helpers: loading, mobile menu, search nav, icons
@@ -142,8 +143,11 @@ Each entry is stored in Appwrite with `time` (HH:MM) and `date` (YYYY-MM-DD). Th
 ### AI Nutrition (`src/claudeService.ts`)
 
 - When the user enables the AI checkbox and selects a food, `getNutritionInfo(foodName)` is called.
-- It calls Claude Haiku with a prompt requesting vitamins, minerals, benefits, and notes in Brazilian Portuguese, formatted as JSON.
-- Results are cached in `localStorage` with key prefix `nutrition_cache_<foodName>_<grams>`.
+- It executes the `nutrition-info` Appwrite Function (`functions/nutrition-info/src/main.js`) via `functions.createExecution`.
+- The function only accepts logged-in users (`x-appwrite-user-id`) and food names from `foodDatabase.ts` (allowlist generated into `foodNames.json` by `scripts/package-function.sh`, so re-package after adding foods).
+- It looks the food up in the shared `nutritionCache` collection (row ID = sha256 of the name); on a miss it calls `claude-haiku-5-5` with structured outputs (`output_config.format`) for pt-BR JSON and stores the result for every user.
+- Function variables: `ANTHROPIC_API_KEY`, `APPWRITE_DB_ID`, `APPWRITE_NUTRITION_CACHE_ID` (and optionally `APPWRITE_API_KEY` if the dynamic key isn't used). Scopes: `rows.read`, `rows.write`.
+- Results are also cached in `localStorage` with key prefix `nutrition_cache_<foodName>_<grams>`.
 - The cache is cleared via a button in settings.
 
 ### Sharing
@@ -185,7 +189,7 @@ Each entry is stored in Appwrite with `time` (HH:MM) and `date` (YYYY-MM-DD). Th
 2. **PWA plugin disabled in dev**: `vite.config.js` has `devOptions: { enabled: false }`. Service worker and PWA features only work in preview/production builds. Do not expect PWA behavior during `npm run dev`.
 3. **Date timezone offset logic**: Appwrite stores dates as `YYYY-MM-DD` strings derived from `new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString()`. This converts local time to UTC midnight before extracting the date string. Be careful when modifying date handling.
 4. **Shared view bypasses auth**: The `?share=` query param completely skips the auth flow. Any changes to auth initialization must preserve this behavior.
-5. **Claude model is pinned**: `claudeService.ts` uses `claude-haiku-4-5-20251001`. If this model is deprecated, the call will fail.
+5. **Claude model is pinned**: `functions/nutrition-info/src/main.js` uses `claude-haiku-5-5`. Changing it means re-deploying the function; cached rows record the model that produced them.
 6. **Food database is static**: All food data is in a single hardcoded array. Adding new foods requires editing `foodDatabase.ts` directly.
 7. **No routing library**: All "views" (landing, auth modal, app content, settings, shared view) are sections in `index.html` shown/hidden via CSS `hidden` class. State is managed by DOM visibility, not a router.
 8. **Bulk delete uses `deleteUserSettings`**: In `index.ts`, `handleBulkDelete` calls `fetchUserSettings`, which internally calls `AppwriteDB.deleteUserSettings`. This naming is confusing but intentional for that specific flow.

@@ -24,3 +24,14 @@ tasks:
     deps: [dot-env]
     cmds:
       - export $(cat .env | xargs) && npm run build
+
+  package-function:
+    desc: Packages the nutrition-info Appwrite Function into dist-functions/nutrition-info.tar.gz
+    sources:
+      - functions/nutrition-info/package.json
+      - functions/nutrition-info/src/main.js
+      - src/foodDatabase.ts
+    generates:
+      - dist-functions/nutrition-info.tar.gz
+    cmds:
+      - scripts/package-function.sh

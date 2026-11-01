@@ -11,3 +11,8 @@ dev-dist/
 
 # IDE
 .idea/
+
+# Packaged Appwrite Functions
+dist-functions/
+functions/*/node_modules/
+functions/nutrition-info/src/foodNames.json

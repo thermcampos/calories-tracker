@@ -1,0 +1,15 @@
+{
+  "name": "nutrition-info",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Appwrite Function: AI nutrition info for the calories tracker, with a shared cache",
+  "type": "module",
+  "main": "src/main.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "node-appwrite": "^31.1.0"
+  }
+}

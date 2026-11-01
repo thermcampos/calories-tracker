@@ -1,4 +1,4 @@
-import { Client, Account, Databases, Query, ID, Models } from 'appwrite';
+import { Client, Account, Databases, Functions, Query, ID, Models } from 'appwrite';
 import { ExerciseEntry, FoodStorage, RegularItem, UserSettings } from './types';
 import { getCachedUser, setCachedUser, clearCachedUser } from './userCache';
 
@@ -13,6 +13,7 @@ client
 // Initialize services
 export const account = new Account(client);
 export const databases = new Databases(client);
+export const functions = new Functions(client);
 
 // Configuration constants
 export const DATABASE_ID = import.meta.env.VITE_APPWRITE_DBID
@@ -22,6 +23,7 @@ export const MONTHLY_CALORIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_MONT
 export const SHARED_DAYS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_SHAREDDAYSID
 export const EXERCISE_ENTRIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_EXERCISEENTRIESID
 export const REGULAR_ITEMS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_REGULARITEMSID
+export const NUTRITION_FUNCTION_ID = import.meta.env.VITE_APPWRITE_NUTRITIONFUNCTIONID
 
 async function getCurrentAccountUser(): Promise<Models.User<Record<string, unknown>>> {
   const cached = await getCachedUser();

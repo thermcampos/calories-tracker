@@ -10,7 +10,8 @@ interface ImportMetaEnv {
   readonly VITE_APPWRITE_MONTLYCALORIESID: string;
   readonly VITE_APPWRITE_SHAREDDAYSID: string;
   readonly VITE_APPWRITE_EXERCISEENTRIESID: string;
-  readonly VITE_CLAUDE_API_KEY: string;
+  readonly VITE_APPWRITE_REGULARITEMSID: string;
+  readonly VITE_APPWRITE_NUTRITIONFUNCTIONID: string;
 }
 
 interface ImportMeta {

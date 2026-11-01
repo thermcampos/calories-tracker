@@ -1,12 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { functions, NUTRITION_FUNCTION_ID } from './appwrite';
 
-const API_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
-
-// Initialize Claude client
-const anthropic = new Anthropic({
-  apiKey: API_KEY,
-  dangerouslyAllowBrowser: true // Allow usage in browser (for development/demo purposes)
-});
+// Nutrition info comes from the `nutrition-info` Appwrite Function (functions/nutrition-info),
+// which holds the Anthropic API key and a cache shared by all users.
+// The browser never talks to the Anthropic API directly.
 
 export interface FatLossInfo {
   caloricDensity: string;
@@ -91,105 +87,25 @@ export async function getNutritionInfo(foodName: string): Promise<NutritionInfo>
 
   console.log(`Fetching nutrition info from AI for: ${foodName} (100g)`);
   try {
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      tools: [
-        {
-          name: 'submit_nutrition_info',
-          description: 'Submit structured nutritional information for a food item.',
-          input_schema: {
-            type: 'object',
-            properties: {
-              vitamins: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Only vitamins present in significant amounts, formatted as "Vitamina X: descrição"'
-              },
-              minerals: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Only minerals present in significant amounts, formatted as "Mineral: descrição"'
-              },
-              benefits: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Main health benefits'
-              },
-              fatLoss: {
-                type: 'object',
-                properties: {
-                  caloricDensity: { type: 'string', enum: ['baixa', 'média', 'alta'] },
-                  notes: { type: 'string' }
-                },
-                required: ['caloricDensity', 'notes']
-              },
-              muscleBuilding: {
-                type: 'object',
-                properties: {
-                  proteinQuality: { type: 'string' },
-                  notes: { type: 'string' }
-                },
-                required: ['proteinQuality', 'notes']
-              },
-              dailyIntake: {
-                type: 'string',
-                description: 'Contextualization of how this 100g portion contributes to typical daily needs'
-              },
-              notes: {
-                type: 'string',
-                description: 'Additional important information'
-              }
-            },
-            required: ['vitamins', 'minerals', 'benefits', 'fatLoss', 'muscleBuilding', 'dailyIntake', 'notes']
-          }
-        }
-      ],
-      tool_choice: { type: 'tool', name: 'submit_nutrition_info' },
-      messages: [
-        {
-          role: 'user',
-          content: `Provide detailed nutritional information for 100g of ${foodName}.
-
-IMPORTANT: Respond in Brazilian Portuguese (pt-BR) — all string values in the tool call must be in pt-BR.
-
-Focus on:
-1. Key vitamins (e.g., A, B complex, C, D, E, K) — only significant amounts
-2. Important minerals (e.g., iron, calcium, magnesium, zinc, potassium) — only significant amounts
-3. Main health benefits
-4. Fat loss considerations: satiety level, calorie density, whether it fits well in a caloric deficit, and any tips for portion control
-5. Muscle building considerations: protein quality/completeness, leucine content if relevant, best pairing, and how it supports muscle protein synthesis
-6. Daily recommended intake context: how much of an adult's typical daily needs a 100g portion covers, based on general adult reference values
-7. Any important notes or considerations (allergens, preparation tips, moderation warnings, etc.)
-
-Do not include amount of fats, carbs, or proteins in grams — no need. Be concise but informative.`
-        }
-      ]
+    const execution = await functions.createExecution({
+      functionId: NUTRITION_FUNCTION_ID,
+      body: JSON.stringify({ foodName }),
+      async: false,
     });
 
-    console.log(`stop_reason=${message.stop_reason}`);
-    if (message.stop_reason === 'max_tokens') {
-      console.warn(`Response truncated for "${foodName}" — hit max_tokens limit`);
+    const payload = JSON.parse(execution.responseBody || '{}') as
+      { ok: true; cached: boolean; data: NutritionInfo } | { ok: false; message: string };
+
+    if (execution.responseStatusCode !== 200 || !payload.ok) {
+      const reason = payload.ok ? `status ${execution.responseStatusCode}` : payload.message;
+      throw new Error(`nutrition-info function failed: ${reason}`);
     }
 
-    // With tool_choice forcing a specific tool, the tool_use block is guaranteed
-    const toolUseBlock = message.content.find(
-      (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use'
-    );
-
-    if (!toolUseBlock) {
-      throw new Error('No tool_use block in response');
-    }
-
-    const nutritionInfo: NutritionInfo = toolUseBlock.input as NutritionInfo;
-
-    // Cache the result for future use
-    cacheNutrition(foodName, 100, nutritionInfo);
-
-    return nutritionInfo;
-
+    console.debug(`Nutrition info for "${foodName}" (shared cache hit: ${payload.cached})`);
+    cacheNutrition(foodName, 100, payload.data);
+    return payload.data;
   } catch (error) {
-    console.error('Error getting nutrition info from Claude:', error);
+    console.error('Error getting nutrition info:', error);
     throw new Error('Failed to get nutrition information. Please try again.');
   }
 }
