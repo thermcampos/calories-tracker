@@ -17,9 +17,10 @@ import {
   MealGroup,
   MealPeriod,
   PreWorkoutTime,
+  RegularItem,
   UserSettings,
 } from './types.js';
-import { AppwriteAuth, AppwriteDB } from './appwrite.js';
+import { AppwriteAuth, AppwriteDB, REGULAR_ITEMS_COLLECTION_ID } from './appwrite.js';
 import swal from 'sweetalert';
 import {
   closeMobileMenu,
@@ -753,6 +754,9 @@ async function toggleSettingsView() {
         }));
       renderGoalsList(goals);
 
+      await loadRegularItems();
+      renderRegularItemsList();
+
       // Hide goal form if open
       const goalFormContainer = document.getElementById('goalFormContainer');
       if (goalFormContainer) goalFormContainer.classList.add('hidden');
@@ -776,6 +780,8 @@ async function toggleSettingsView() {
     }
   }
   else {
+    // Regular items may have been removed in settings: refresh pending cards
+    renderFoodEntries(currentFoodEntries);
     getDivById('app-content').classList.remove('hidden');
     getDivById('settings-content').classList.add('hidden');
     getButtonById('settingsBtn').textContent = '⚙️ Settings';
@@ -821,6 +827,7 @@ function clearEditing() {
   getInputById('foodSearchInput').value = '';
   getInputById('gramAmount').value = '100';
   getInputById('periodGroup').value = '';
+  setRegularCheckboxMode(false);
   showFoodPreview(false);
   hideAINutritionCard();
   hideAlternativesContainer();
@@ -850,6 +857,8 @@ function clearAppData() {
       </div>
   `;
   selectedFood = null;
+  appState.regularItems = [];
+  appState.regularItemsLoaded = false;
   getButtonById('cancel-food-btn').style.display = 'none';
   getDivById('exerciseListContainer').innerHTML = '<div class="exercise-empty">No exercises recorded</div>';
 }
@@ -1301,6 +1310,68 @@ function renderGoalsList(goals: UserSettings[]) {
       if (goalId) handleSelectGoal(goalId, goals);
     });
   });
+}
+
+function renderRegularItemsList() {
+  const container = document.getElementById('regularItemsContainer');
+  if (!container) return;
+
+  const items = appState.regularItems;
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="no-goals-msg">No regular items yet. Check "Repeat daily" when adding a food.</div>';
+    return;
+  }
+
+  container.innerHTML = items.map(item => `
+    <div class="goal-card">
+      <div class="goal-card-header">
+        <div class="goal-name">${item.name}</div>
+        <span class="goal-active-badge">${getMealLabel(item.periodGroup as MealPeriod)}</span>
+      </div>
+      <div class="goal-summary">
+        <span>${item.grams}g</span>
+      </div>
+      <div class="goal-actions">
+        <button class="btn goal-delete-btn regular-item-delete-btn" data-regular-id="${item.id}">Delete</button>
+      </div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.regular-item-delete-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const regularId = (e.currentTarget as HTMLElement).getAttribute('data-regular-id');
+      if (regularId) handleDeleteRegularItem(regularId);
+    });
+  });
+}
+
+async function handleDeleteRegularItem(id: string) {
+  const item = appState.regularItems.find(r => r.id === id);
+  if (!item) return;
+
+  const willDelete = await swal({
+    title: "Are you sure?",
+    text: `Remove "${item.name}" from your regular items? It will stop appearing every day.`,
+    icon: 'warning',
+    dangerMode: true,
+    closeOnEsc: true,
+    buttons: ["No, keep it", "Yes, remove it!"],
+  });
+
+  if (!willDelete) return;
+
+  try {
+    await AppwriteDB.deleteRegularItem(id);
+    appState.regularItems = appState.regularItems.filter(r => r.id !== id);
+    renderRegularItemsList();
+    renderFoodEntries(currentFoodEntries);
+  } catch (error) {
+    console.error('Delete regular item error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to delete regular item: ' + error.message, 'error');
+    }
+  }
 }
 
 function handleAddGoal() {
@@ -1899,6 +1970,10 @@ async function setFoodToEdit(foodId: string) {
     getInputById('foodCaloriesToUpdate').value = foodToEdit[0].calories;
     getInputById('periodGroup').value = foodToEdit[0].periodGroup;
 
+    // Matching regular item: offer to update it too (unchecked by default)
+    const editPeriod = foodToEdit[0].periodGroup || getMealPeriod(foodToEdit[0].time);
+    setRegularCheckboxMode(hasRegularItem(foodToEdit[0].name, editPeriod));
+
     // Scroll to top
     const titleDiv = getDivById('add-foot-title') as HTMLElement;
     if (titleDiv) {
@@ -1947,6 +2022,10 @@ async function setFoodToCopy(foodId: string) {
     getInputById('foodIdToUpdate').value = '';
     getInputById('foodTimeToUpdate').value = '';
     getInputById('foodCaloriesToUpdate').value = '';
+
+    // Matching regular item: offer to update it too (unchecked by default)
+    const copyPeriod = foodToCopy[0].periodGroup || getMealPeriod(foodToCopy[0].time);
+    setRegularCheckboxMode(hasRegularItem(foodToCopy[0].name, copyPeriod));
 
     // Scroll to top
     const titleDiv = getDivById('add-foot-title') as HTMLElement;
@@ -2004,6 +2083,32 @@ function copyCardHandler(e: Event) {
   }
 }
 
+function addRegularCardHandler(e: Event) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const button = e.currentTarget as HTMLElement;
+  const name = button.getAttribute('data-name');
+  const period = button.getAttribute('data-period');
+
+  if (name && period) {
+    handleConvertRegular(name, period);
+  }
+}
+
+function removeRegularCardHandler(e: Event) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const button = e.currentTarget as HTMLElement;
+  const name = button.getAttribute('data-name');
+  const period = button.getAttribute('data-period');
+
+  if (name && period) {
+    handleRemoveRegular(name, period);
+  }
+}
+
 const setupEditAndDeleteEvents = () => {
   // Setup toggle show cards events
   const cards = getButtonListByClassName('card-header-toggle');
@@ -2031,6 +2136,20 @@ const setupEditAndDeleteEvents = () => {
   Array.from(editCards).forEach((card: HTMLElement) => {
     card.removeEventListener('click', editCardHandler);
     card.addEventListener('click', editCardHandler);
+  });
+
+  // Setup regular item convert events
+  const addRegularButtons = getButtonListByClassName('btn-add-regular');
+  Array.from(addRegularButtons).forEach((button: HTMLElement) => {
+    button.removeEventListener('click', addRegularCardHandler);
+    button.addEventListener('click', addRegularCardHandler);
+  });
+
+  // Setup regular item remove events
+  const removeRegularButtons = getButtonListByClassName('btn-remove-regular');
+  Array.from(removeRegularButtons).forEach((button: HTMLElement) => {
+    button.removeEventListener('click', removeRegularCardHandler);
+    button.addEventListener('click', removeRegularCardHandler);
   });
 }
 
@@ -2070,6 +2189,7 @@ const updateFood = async () => {
   const entryIndex = currentFoodEntries.findIndex(e => e.id === foodId);
   const originalEntry = entryIndex !== -1 ? { ...currentFoodEntries[entryIndex] } : null;
   const oldCalories = originalEntry ? originalEntry.calories : parseInt(getInputById('foodCaloriesToUpdate').value);
+  const markAsRegular = getInputById('markAsRegular').checked;
 
   const entry: FoodStorage = {
     ...(originalEntry || {}),
@@ -2093,32 +2213,51 @@ const updateFood = async () => {
   renderFoodEntries(currentFoodEntries);
   clearEditing();
 
-  try {
-    const { id: _id, ...entryPayload } = entry;
-    await AppwriteDB.updateFoodEntry(foodId, entryPayload as FoodStorage);
+  const saved = await serializeWrite(async () => {
+    try {
+      const { id: _id, ...entryPayload } = entry;
+      await AppwriteDB.updateFoodEntry(foodId, entryPayload as FoodStorage);
 
-    const monthlyDocumentId = getDocumentIdForToday();
-    if (!monthlyDocumentId?.documentId) {
-      const monthlyCreated = await AppwriteDB.createMonthlyCaloryForDay(selectedDate, entry.calories);
-      updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
-    } else {
-      const totalCalories = monthlyDocumentId.totalCalories + entry.calories - oldCalories;
-      const monthlyUpdated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
-      updateDocumentIdForToday(monthlyUpdated.$id, monthlyUpdated.totalCalories);
-    }
+      const monthlyDocumentId = getDocumentIdForToday();
+      if (!monthlyDocumentId?.documentId) {
+        const monthlyCreated = await AppwriteDB.createMonthlyCaloryForDay(selectedDate, entry.calories);
+        updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
+      } else {
+        const totalCalories = monthlyDocumentId.totalCalories + entry.calories - oldCalories;
+        const monthlyUpdated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
+        updateDocumentIdForToday(monthlyUpdated.$id, monthlyUpdated.totalCalories);
+      }
 
-    await delay(QUICK_DELAY);
-    renderCalendar();
-  } catch (error) {
-    if (originalEntry && entryIndex !== -1) {
-      currentFoodEntries[entryIndex] = originalEntry;
+      await delay(QUICK_DELAY);
+      renderCalendar();
+      return true;
+    } catch (error) {
+      if (originalEntry && entryIndex !== -1) {
+        currentFoodEntries[entryIndex] = originalEntry;
+      }
+      renderFoodEntries(currentFoodEntries);
+      console.error('Update food error:', error);
+      if (error instanceof Error) {
+        swal('Oh no!', 'Failed to update food entry: ' + error.message, 'error');
+      }
+      return false;
     }
-    renderFoodEntries(currentFoodEntries);
-    console.error('Update food error:', error);
-    if (error instanceof Error) {
-      swal('Oh no!', 'Failed to update food entry: ' + error.message, 'error');
+  });
+
+  // Unchecked: only this entry changes; the regular item is left untouched.
+  // Checked: the regular item follows the edit (moving to the new food/period if they changed).
+  if (!saved || !markAsRegular) return;
+
+  const newPeriod = getEffectivePeriod(entry);
+  if (originalEntry) {
+    const oldPeriod = getEffectivePeriod(originalEntry);
+    if (originalEntry.name !== entry.name || oldPeriod !== newPeriod) {
+      await removeRegularItemByKey(originalEntry.name, oldPeriod);
     }
   }
+  await upsertRegularItem(entry.name, entry.grams, newPeriod);
+  // Regular items changed after the optimistic render: refresh pending cards
+  renderFoodEntries(currentFoodEntries);
 }
 
 const getDocumentIdForToday = (): DailyTotalCalories | null => {
@@ -2183,6 +2322,51 @@ const updateDocumentIdForDay = (id: string, totalCalories: number, day: number):
   }
 }
 
+// Monthly calories are updated with read-modify-write, so every add/edit/delete
+// (e.g. tapping "Add" on several regular cards quickly) must run one at a time.
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+function serializeWrite<T>(task: () => Promise<T>): Promise<T> {
+  const run = writeQueue.then(task);
+  writeQueue = run.catch(() => undefined);
+  return run;
+}
+
+// Persist a new food entry (save + monthly calories + calendar) with optimistic rollback.
+// Returns true when the entry was saved successfully.
+const persistNewFoodEntry = (entry: FoodStorage): Promise<boolean> =>
+  serializeWrite(() => persistNewFoodEntryNow(entry));
+
+const persistNewFoodEntryNow = async (entry: FoodStorage): Promise<boolean> => {
+  try {
+    const { id: _id, ...entryPayload } = entry;
+    const savedEntry = await AppwriteDB.saveFoodEntry(entryPayload as FoodStorage);
+    entry.id = savedEntry.$id;
+    renderFoodEntries(currentFoodEntries);
+
+    const monthlyDocumentId = getDocumentIdForToday();
+    if (!monthlyDocumentId?.documentId) {
+      const monthlyCreated = await AppwriteDB.createMonthlyCaloryForDay(selectedDate, entry.calories);
+      updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
+    } else {
+      const totalCalories = monthlyDocumentId.totalCalories + entry.calories;
+      const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
+      updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
+    }
+
+    renderCalendar();
+    return true;
+  } catch (error) {
+    currentFoodEntries = currentFoodEntries.filter(e => e.id !== entry.id);
+    renderFoodEntries(currentFoodEntries);
+    console.error('Add food error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to add food entry: ' + error.message, 'error');
+    }
+    return false;
+  }
+}
+
 const addFood = async () => {
   if (!currentUser) {
     swal('Hey!', 'Please log in to add food entries.', 'info');
@@ -2219,6 +2403,8 @@ const addFood = async () => {
     periodGroup: getInputById('periodGroup').value
   };
 
+  const markAsRegular = getInputById('markAsRegular').checked;
+
   currentFoodEntries.push(entry);
   renderFoodEntries(currentFoodEntries);
 
@@ -2227,33 +2413,13 @@ const addFood = async () => {
   getInputById('foodSearchInput').value = '';
   gramAmount.value = '100';
   getInputById('periodGroup').value = '';
+  setRegularCheckboxMode(false);
   showFoodPreview(false);
   hideAINutritionCard();
 
-  try {
-    const { id: _id, ...entryPayload } = entry;
-    const savedEntry = await AppwriteDB.saveFoodEntry(entryPayload as FoodStorage);
-    entry.id = savedEntry.$id;
-    renderFoodEntries(currentFoodEntries);
-
-    const monthlyDocumentId = getDocumentIdForToday();
-    if (!monthlyDocumentId?.documentId) {
-      const monthlyCreated = await AppwriteDB.createMonthlyCaloryForDay(selectedDate, entry.calories);
-      updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
-    } else {
-      const totalCalories = monthlyDocumentId.totalCalories + entry.calories;
-      const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
-      updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
-    }
-
-    renderCalendar();
-  } catch (error) {
-    currentFoodEntries = currentFoodEntries.filter(e => e.id !== entry.id);
-    renderFoodEntries(currentFoodEntries);
-    console.error('Add food error:', error);
-    if (error instanceof Error) {
-      swal('Oh no!', 'Failed to add food entry: ' + error.message, 'error');
-    }
+  const saved = await persistNewFoodEntry(entry);
+  if (saved && markAsRegular) {
+    await upsertRegularItem(entry.name, entry.grams, getEffectivePeriod(entry));
   }
 }
 
@@ -2423,6 +2589,111 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
     .filter(group => group.entries.length > 0);
 }
 
+// ---- Regular Items ----
+
+const hasRegularItem = (name: string, periodGroup: string): boolean =>
+  appState.regularItems.some(r => r.name === name && r.periodGroup === periodGroup);
+
+// The form checkbox has two meanings: "Repeat daily" creates a regular item;
+// "Also update regular item" (entry already matches one) propagates the change to it.
+// Both start unchecked.
+function setRegularCheckboxMode(matchesRegular: boolean) {
+  getInputById('markAsRegular').checked = false;
+  const label = document.getElementById('markAsRegularLabel');
+  if (label) {
+    label.textContent = matchesRegular ? 'Also update regular item' : 'Repeat daily (regular item)';
+  }
+}
+
+const getEffectivePeriod = (entry: FoodStorage): string =>
+  entry.periodGroup || getMealPeriod(entry.time);
+
+const isViewingToday = (): boolean => {
+  const selectedDateString = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000))
+    .toISOString()
+    .split('T')[0];
+  // Recompute every time: the app may stay open across midnight
+  appState.todayDateString = getCurrentDate(appState.userTimezone).date;
+  return selectedDateString === appState.todayDateString;
+};
+
+// Returns true when appState.regularItems reflects the database
+async function loadRegularItems(force: boolean = false): Promise<boolean> {
+  if (!currentUser) return false;
+  if (appState.regularItemsLoaded && !force) return true;
+  if (!REGULAR_ITEMS_COLLECTION_ID) {
+    console.error('VITE_APPWRITE_REGULARITEMSID is not set; regular items are disabled.');
+    return false;
+  }
+
+  try {
+    const documents = await AppwriteDB.getRegularItems();
+    appState.regularItems = documents.map((doc: any) => ({
+      id: doc.$id,
+      name: doc.name,
+      grams: doc.grams,
+      periodGroup: doc.periodGroup,
+    }));
+    appState.regularItemsLoaded = true;
+    return true;
+  } catch (error) {
+    console.error('Load regular items error:', error);
+    return false;
+  }
+}
+
+async function upsertRegularItem(name: string, grams: number, periodGroup: string) {
+  // Never create from an unknown state: a failed load would otherwise produce duplicates
+  if (!(await loadRegularItems())) {
+    swal('Oh no!', 'Could not load your regular items, so this one was not saved. Please try again.', 'error');
+    return;
+  }
+
+  const roundedGrams = Math.round(grams);
+  const existing = appState.regularItems.find(r => r.name === name && r.periodGroup === periodGroup);
+
+  try {
+    if (existing?.id) {
+      // Last wins: same food and period updates the quantity
+      if (existing.grams === roundedGrams) return;
+      await AppwriteDB.updateRegularItem(existing.id, { grams: roundedGrams });
+      existing.grams = roundedGrams;
+    } else {
+      const saved = await AppwriteDB.saveRegularItem({ name, grams: roundedGrams, periodGroup });
+      appState.regularItems.push({ id: saved.$id, name, grams: roundedGrams, periodGroup });
+    }
+  } catch (error) {
+    console.error('Upsert regular item error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to save regular item: ' + error.message, 'error');
+    }
+  }
+}
+
+async function removeRegularItemByKey(name: string, periodGroup: string) {
+  await loadRegularItems();
+  const existing = appState.regularItems.find(r => r.name === name && r.periodGroup === periodGroup);
+  if (!existing?.id) return;
+
+  try {
+    await AppwriteDB.deleteRegularItem(existing.id);
+    appState.regularItems = appState.regularItems.filter(r => r.id !== existing.id);
+  } catch (error) {
+    console.error('Remove regular item error:', error);
+    if (error instanceof Error) {
+      swal('Oh no!', 'Failed to remove regular item: ' + error.message, 'error');
+    }
+  }
+}
+
+// Regular items not yet logged for the selected date (only shown for today)
+function getPendingRegularItems(entries: FoodStorage[]): RegularItem[] {
+  if (!isViewingToday()) return [];
+  return appState.regularItems.filter(regular =>
+    !entries.some(entry => entry.name === regular.name && getEffectivePeriod(entry) === regular.periodGroup)
+  );
+}
+
 // Load food entries from Appwrite for a given date
 async function loadFoodEntries(date: Date) {
   if (!currentUser) return;
@@ -2517,7 +2788,9 @@ function renderFoodEntries(entries: FoodStorage[]) {
   const container = getDivById('foodCardsContainer');
   container.innerHTML = '';
 
-  if (entries.length === 0) {
+  const pendingRegulars = getPendingRegularItems(entries);
+
+  if (entries.length === 0 && pendingRegulars.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">🍽️</div>
@@ -2526,10 +2799,37 @@ function renderFoodEntries(entries: FoodStorage[]) {
       </div>
     `;
   } else {
+    const pendingByPeriod = new Map<string, RegularItem[]>();
+    pendingRegulars.forEach(item => {
+      const list = pendingByPeriod.get(item.periodGroup) ?? [];
+      list.push(item);
+      pendingByPeriod.set(item.periodGroup, list);
+    });
+
     const mealGroups = groupFoodEntriesByMeal(entries);
+    const renderedPeriods = new Set<string>();
 
     mealGroups.forEach(group => {
-      renderMealGroup(group);
+      renderedPeriods.add(group.period);
+      renderMealGroup(group, pendingByPeriod.get(group.period) ?? []);
+    });
+
+    // Render meal groups that contain only pending regular items
+    const orderedPeriods = getOrderedMealPeriods(appState.preWorkoutTime);
+    orderedPeriods.forEach(period => {
+      if (renderedPeriods.has(period)) return;
+      const pending = pendingByPeriod.get(period);
+      if (!pending || pending.length === 0) return;
+      renderMealGroup({
+        period,
+        label: getMealLabel(period),
+        entries: [],
+        totalCalories: 0,
+        totalProtein: 0,
+        totalFat: 0,
+        totalCarbs: 0,
+        isExpanded: false
+      }, pending);
     });
 
     setupEditAndDeleteEvents();
@@ -2817,28 +3117,86 @@ async function handleDeleteFood(documentId: string) {
 
   renderFoodEntries(currentFoodEntries);
 
+  await serializeWrite(async () => {
+    try {
+      await AppwriteDB.deleteFoodEntry(documentId);
+
+      const monthlyDocumentId = getDocumentIdForToday();
+      if (monthlyDocumentId?.documentId) {
+        const totalCalories = monthlyDocumentId.totalCalories - existingToDelete;
+        const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
+        updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
+        await delay(QUICK_DELAY);
+      }
+
+      renderCalendar();
+    } catch (error) {
+      if (deletedEntry && entryIndex !== -1) {
+        currentFoodEntries.splice(entryIndex, 0, deletedEntry);
+      }
+      renderFoodEntries(currentFoodEntries);
+      console.error('Delete food error:', error);
+      if (error instanceof Error) {
+        swal('Oh no!', 'Failed to delete food entry: ' + error.message, 'error');
+      }
+    }
+  });
+}
+
+// Convert a pending regular item into a real food entry for the selected date
+async function handleConvertRegular(name: string, periodGroup: string) {
+  if (!currentUser) return;
+
+  const item = appState.regularItems.find(r => r.name === name && r.periodGroup === periodGroup);
+  if (!item) return;
+
+  let foodData: FoodItem;
   try {
-    await AppwriteDB.deleteFoodEntry(documentId);
-
-    const monthlyDocumentId = getDocumentIdForToday();
-    if (monthlyDocumentId?.documentId) {
-      const totalCalories = monthlyDocumentId.totalCalories - existingToDelete;
-      const monthlyCreated = await AppwriteDB.updateMonthlyCaloryForDay(monthlyDocumentId.documentId, selectedDate, totalCalories);
-      updateDocumentIdForToday(monthlyCreated.$id, monthlyCreated.totalCalories);
-      await delay(QUICK_DELAY);
-    }
-
-    renderCalendar();
+    foodData = getFoodItemByName(item.name);
   } catch (error) {
-    if (deletedEntry && entryIndex !== -1) {
-      currentFoodEntries.splice(entryIndex, 0, deletedEntry);
-    }
-    renderFoodEntries(currentFoodEntries);
-    console.error('Delete food error:', error);
-    if (error instanceof Error) {
-      swal('Oh no!', 'Failed to delete food entry: ' + error.message, 'error');
-    }
+    swal('Oh no!', `"${item.name}" is no longer in the food database. Remove it from your regular items in Settings.`, 'error');
+    console.error('Convert regular item error:', error);
+    return;
   }
+
+  const proportion: FoodItem = getFoodData(item.grams, foodData);
+  const date = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString();
+
+  const entry: FoodStorage = {
+    id: `optimistic-${Date.now()}`,
+    name: item.name,
+    grams: item.grams,
+    calories: proportion.info.calories,
+    protein: proportion.info.protein,
+    fat: proportion.info.fat,
+    carbs: proportion.info.carbs,
+    fiber: proportion.info.fiber,
+    date: date.split('T')[0],
+    alkaline: foodData.info.alkaline,
+    time: getCurrentDate(appState.userTimezone).timeString,
+    periodGroup: item.periodGroup
+  };
+
+  currentFoodEntries.push(entry);
+  renderFoodEntries(currentFoodEntries);
+  await persistNewFoodEntry(entry);
+}
+
+// Permanently remove a regular item so it stops appearing every day
+async function handleRemoveRegular(name: string, periodGroup: string) {
+  const willRemove = await swal({
+    title: "Are you sure?",
+    text: `Remove "${name}" from your regular items? It will stop appearing every day.`,
+    icon: 'warning',
+    dangerMode: true,
+    closeOnEsc: true,
+    buttons: ["No, keep it", "Yes, remove it!"],
+  });
+
+  if (!willRemove) return;
+
+  await removeRegularItemByKey(name, periodGroup);
+  renderFoodEntries(currentFoodEntries);
 }
 
 // Create a food card element (without appending it to the DOM)
@@ -2897,8 +3255,79 @@ function createFoodCard(foodData: FoodStorage): HTMLElement {
   return card;
 }
 
+// Create a grayed-out card for a regular item not yet logged today.
+// Uses distinct CSS classes so it is excluded from all totals.
+function createRegularCard(item: RegularItem): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'food-card regular-pending-card';
+  card.setAttribute('data-name', item.name);
+  card.setAttribute('data-period', item.periodGroup);
+
+  let calories = 0;
+  let protein = 0;
+  let fat = 0;
+  let carbs = 0;
+  let fiber = 0;
+
+  try {
+    const foodFromDatabase = getFoodItemByName(item.name);
+    const proportion = getFoodData(item.grams, foodFromDatabase);
+    calories = proportion.info.calories;
+    protein = proportion.info.protein;
+    fat = proportion.info.fat;
+    carbs = proportion.info.carbs;
+    fiber = proportion.info.fiber;
+  } catch (error) {
+    console.error('Regular item food not found in database:', item.name, error);
+  }
+
+  card.innerHTML = `
+    <div class="card-header card-header-toggle">
+      <div class="card-main-info">
+          <div class="food-name-time">
+            <div class="food-name">${item.name} <span class="regular-badge">Regular</span></div>
+            <div class="food-time-pending">Planned • ${item.grams}g</div>
+          </div>
+          <div class="calories-display-pending">${calories} cal</div>
+      </div>
+      <div class="expand-icon">▼</div>
+    </div>
+    <div class="card-details">
+      <div class="details-content">
+          <div class="nutrition-grid">
+            <div class="nutrition-item">
+                <div class="nutrition-label">Protein</div>
+                <div class="nutrition-value">${protein}g</div>
+            </div>
+            <div class="nutrition-item">
+                <div class="nutrition-label">Fat</div>
+                <div class="nutrition-value">${fat}g</div>
+            </div>
+            <div class="nutrition-item">
+                <div class="nutrition-label">Carbs</div>
+                <div class="nutrition-value">${carbs}g</div>
+            </div>
+            <div class="nutrition-item">
+                <div class="nutrition-label">Fiber</div>
+                <div class="nutrition-value">${fiber}g</div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <span class="muted">Not counted in totals yet</span>
+            <div>
+              <button class="btn btn-add-regular" data-name="${item.name}" data-period="${item.periodGroup}">Add</button>
+              <button class="btn btn-remove-regular" data-name="${item.name}" data-period="${item.periodGroup}">Remove</button>
+            </div>
+          </div>
+      </div>
+    </div>
+  `;
+
+  return card;
+}
+
 // Render a meal group with header and food items
-function renderMealGroup(group: MealGroup) {
+function renderMealGroup(group: MealGroup, pendingRegulars: RegularItem[] = []) {
   const container = getDivById('foodCardsContainer');
 
   // Create meal group container
@@ -2942,6 +3371,12 @@ function renderMealGroup(group: MealGroup) {
   // Add each food entry to the group
   group.entries.forEach(entry => {
     const card = createFoodCard(entry);
+    itemsDiv.appendChild(card);
+  });
+
+  // Add pending regular items (grayed out) after the real entries
+  pendingRegulars.forEach(item => {
+    const card = createRegularCard(item);
     itemsDiv.appendChild(card);
   });
 
@@ -3017,6 +3452,7 @@ const nextMonth = () => {
 const selectDate = async (date: Date) => {
   selectedDate = date;
   updateCurrentDate();
+  await loadRegularItems();
   await loadFoodEntries(date);
   await loadExerciseEntries(date);
   await loadBMIInfo();

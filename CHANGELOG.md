@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Regular items: flag a food entry as "Repeat daily" when adding or editing it. Regular items show up every day as grayed-out planned cards that don't count toward totals until confirmed with the Add button. When editing an entry that matches a regular item, check "Also update regular item" to carry the change over; otherwise only that day's entry changes. Manage them in Settings.
+
 ## 2026-08-05
 
 ### Added

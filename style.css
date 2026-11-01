@@ -349,6 +349,65 @@ h1 {
     background: #1dd1a1;
 }
 
+/* Regular (pending) item cards */
+.regular-pending-card {
+    opacity: 0.55;
+    border: 1px dashed #6a6a6a;
+}
+
+.regular-pending-card .card-header {
+    background: linear-gradient(135deg, #3a3a3a 0%, #444 100%);
+}
+
+.regular-pending-card .card-header:hover {
+    background: linear-gradient(135deg, #333 0%, #3d3d3d 100%);
+}
+
+.regular-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #6a6a6a;
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.food-time-pending {
+    font-size: 13px;
+    opacity: 0.9;
+    font-style: italic;
+}
+
+.calories-display-pending {
+    font-size: 18px;
+    font-weight: 700;
+    color: #bbb;
+    text-align: right;
+}
+
+.btn-add-regular {
+    background: #2ed573;
+    color: white;
+}
+
+.btn-add-regular:hover {
+    background: #1dd1a1;
+}
+
+.btn-remove-regular {
+    background: #6a6a6a;
+    color: white;
+}
+
+.btn-remove-regular:hover {
+    background: #555;
+}
+
 /* Meal Group Styles */
 .meal-group {
     margin-bottom: 20px;

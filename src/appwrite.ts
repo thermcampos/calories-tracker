@@ -1,5 +1,5 @@
 import { Client, Account, Databases, Query, ID, Models } from 'appwrite';
-import { ExerciseEntry, FoodStorage, UserSettings } from './types';
+import { ExerciseEntry, FoodStorage, RegularItem, UserSettings } from './types';
 import { getCachedUser, setCachedUser, clearCachedUser } from './userCache';
 
 
@@ -21,6 +21,7 @@ export const USER_SETTINGS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_USERSET
 export const MONTHLY_CALORIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_MONTLYCALORIESID
 export const SHARED_DAYS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_SHAREDDAYSID
 export const EXERCISE_ENTRIES_COLLECTION_ID = import.meta.env.VITE_APPWRITE_EXERCISEENTRIESID
+export const REGULAR_ITEMS_COLLECTION_ID = import.meta.env.VITE_APPWRITE_REGULARITEMSID
 
 async function getCurrentAccountUser(): Promise<Models.User<Record<string, unknown>>> {
   const cached = await getCachedUser();
@@ -542,6 +543,88 @@ export class AppwriteDB {
       console.debug('Exercise entry deleted:', documentId);
     } catch (error) {
       console.error('Delete exercise entry error:', error);
+      throw error;
+    }
+  }
+
+  // Get user's regular items
+  static async getRegularItems() {
+    try {
+      const user = await getCurrentAccountUser();
+
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        REGULAR_ITEMS_COLLECTION_ID,
+        [
+          Query.equal('userId', user.$id),
+          Query.limit(200)
+        ]
+      );
+      console.debug('Regular items retrieved:', response);
+      return response.documents;
+    } catch (error) {
+      console.error('Get regular items error:', error);
+      throw error;
+    }
+  }
+
+  // Save regular item
+  static async saveRegularItem(item: RegularItem) {
+    try {
+      const response = await databases.createDocument(
+        DATABASE_ID,
+        REGULAR_ITEMS_COLLECTION_ID,
+        'unique()',
+        {
+          name: item.name,
+          grams: Math.round(item.grams),
+          periodGroup: item.periodGroup,
+          userId: (await getCurrentAccountUser()).$id,
+        }
+      );
+      console.debug('Regular item saved:', response);
+      return response;
+    } catch (error) {
+      console.error('Save regular item error:', error);
+      throw error;
+    }
+  }
+
+  // Update regular item
+  static async updateRegularItem(documentId: string, item: Partial<RegularItem>) {
+    try {
+      const payload: Record<string, unknown> = { ...item };
+      if (typeof payload.grams === 'number') {
+        payload.grams = Math.round(payload.grams);
+      }
+      const response = await databases.updateDocument(
+        DATABASE_ID,
+        REGULAR_ITEMS_COLLECTION_ID,
+        documentId,
+        {
+          ...payload,
+          userId: (await getCurrentAccountUser()).$id,
+        }
+      );
+      console.debug('Regular item updated:', response);
+      return response;
+    } catch (error) {
+      console.error('Update regular item error:', error);
+      throw error;
+    }
+  }
+
+  // Delete regular item
+  static async deleteRegularItem(documentId: string) {
+    try {
+      await databases.deleteDocument(
+        DATABASE_ID,
+        REGULAR_ITEMS_COLLECTION_ID,
+        documentId
+      );
+      console.debug('Regular item deleted:', documentId);
+    } catch (error) {
+      console.error('Delete regular item error:', error);
       throw error;
     }
   }

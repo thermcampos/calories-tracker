@@ -347,6 +347,12 @@
                 </div>
                 <div class="form-group checkbox-group">
                     <label class="checkbox-label">
+                        <input type="checkbox" id="markAsRegular" class="ai-checkbox">
+                        <span id="markAsRegularLabel">Repeat daily (regular item)</span>
+                    </label>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label class="checkbox-label">
                         <input type="checkbox" id="enableAlternatives" class="ai-checkbox">
                         <span>Show other options</span>
                     </label>
@@ -676,6 +682,12 @@
                 </div>
                 <button type="submit" class="settings-btn">Save Workout Time</button>
             </form>
+
+            <div class="date-display" style="margin-top: 40px;">Regular Items</div>
+
+            <div id="regularItemsContainer">
+                <!-- Dynamically rendered list of regular items -->
+            </div>
 
             <div class="date-display" style="margin-top: 40px;">AI Nutrition Cache</div>
 

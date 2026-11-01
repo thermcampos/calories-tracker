@@ -36,6 +36,8 @@ VITE_APPWRITE_FOODENTRIESID=
 VITE_APPWRITE_USERSETTINGSID=
 VITE_APPWRITE_MONTLYCALORIESID=
 VITE_APPWRITE_SHAREDDAYSID=
+VITE_APPWRITE_EXERCISEENTRIESID=
+VITE_APPWRITE_REGULARITEMSID=
 VITE_CLAUDE_API_KEY=
 ```
 
@@ -162,7 +164,7 @@ Each entry is stored in Appwrite with `time` (HH:MM) and `date` (YYYY-MM-DD). Th
 
 - **CI** (`.github/workflows/ci.yml`): Runs `npm ci` + `npm run build` on PRs to `main`. Uses self-hosted runner `easynode-debian`.
 - **Deploy** (`.github/workflows/deploy.yml`): Same build, then rsyncs `dist/` to `deploy@<host>:/srv/sites/calories-tracker/`. Also runs on `workflow_dispatch` and push to `main`.
-- Both workflows inject Appwrite and Claude secrets as env vars during build.
+- Build env vars come from Doppler (`doppler run --project calories-tracker --config prd`). New `VITE_*` vars must be added to the Doppler `prd` config, not just `.env`.
 
 ---
 

@@ -1,4 +1,4 @@
-import { DailyTotalCalories, FoodItem, PreWorkoutTime, SharedDay } from "./types";
+import { DailyTotalCalories, FoodItem, PreWorkoutTime, RegularItem, SharedDay } from "./types";
 
 interface AppState {
   currentHighlightIndex: number;
@@ -10,6 +10,8 @@ interface AppState {
   userTimezone: string;
   todayDateString: string;
   preWorkoutTime?: PreWorkoutTime;
+  regularItems: RegularItem[];
+  regularItemsLoaded: boolean;
 }
 
 export const appState: AppState = {
@@ -20,5 +22,7 @@ export const appState: AppState = {
   isSharedView: false,
   sharedData: null,
   userTimezone: '',
-  todayDateString: ''
+  todayDateString: '',
+  regularItems: [],
+  regularItemsLoaded: false
 };
