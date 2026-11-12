@@ -195,3 +195,15 @@ Each entry is stored in Appwrite with `time` (HH:MM) and `date` (YYYY-MM-DD). Th
 8. **Bulk delete uses `deleteUserSettings`**: In `index.ts`, `handleBulkDelete` calls `fetchUserSettings`, which internally calls `AppwriteDB.deleteUserSettings`. This naming is confusing but intentional for that specific flow.
 9. **Monthly calories day calculation changed after 2025-10-31**: `fetchCaloriesCurrentMonth` has a conditional that changes how the day value is calculated for dates on or after Oct 31, 2025. This affects calendar dot positioning.
 10. **Vite config `include` field**: `vite.config.js` has `include: ['src', 'vite-end.d.ts']` at the top level of the config object. This is non-standard Vite config but appears to work with the current setup.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues on this repo (`thermcampos/calories-tracker`), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
