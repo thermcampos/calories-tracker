@@ -18,7 +18,7 @@
     "workbox-window": "^7.4.1"
   },
   "dependencies": {
-    "appwrite": "^26.2.0",
+    "appwrite": "^29.2.0",
     "sweetalert": "^2.1.2"
   }
 }
