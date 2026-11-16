@@ -35,3 +35,10 @@ tasks:
       - dist-functions/nutrition-info.tar.gz
     cmds:
       - scripts/package-function.sh
+
+  quality:frontend:
+    desc: Runs the quality scripts to make sure the app is in good shape.
+    cmds:
+      - npm ci
+      - npm run build
+      - bash scripts/quality-gate.sh
