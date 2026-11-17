@@ -40,7 +40,7 @@ import {
 import { showAuthForms, toggleAuthForms, showRegisterForm, showLoginForm, hideAuthForms, closeAuthModal } from './auth';
 import { appState } from "./state";
 import { getNutritionInfo, NutritionInfo, clearNutritionCache, getCacheStats } from './claudeService';
-import { getCurrentDate } from './dateUtils';
+import { getCurrentDate, type CurrentDateResult } from './dateUtils';
 
 const escapeHtml = (text: string): string =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -197,6 +197,7 @@ async function handleExportMarkdown() {
       time: entry.time,
       date: entry.date,
       alkaline: entry.alkaline,
+      periodGroup: null,
     }));
 
     const markdown = buildExportMarkdown(foodEntries, startInput, endInput);
@@ -2192,7 +2193,6 @@ const updateFood = async () => {
   const markAsRegular = getInputById('markAsRegular').checked;
 
   const entry: FoodStorage = {
-    ...(originalEntry || {}),
     id: foodId,
     name: selectedFood.name,
     grams: grams,
@@ -2201,6 +2201,7 @@ const updateFood = async () => {
     fat: proportion.info.fat,
     carbs: proportion.info.carbs,
     fiber: proportion.info.fiber,
+    time: originalEntry?.time ?? '',
     date: date.split('T')[0],
     alkaline: selectedFood.info.alkaline,
     periodGroup: getInputById('periodGroup').value,
@@ -2572,8 +2573,8 @@ function groupFoodEntriesByMeal(entries: FoodStorage[]): MealGroup[] {
   };
 
   // Group entries and calculate totals
-  entries.forEach(entry => {
-    const period = entry.periodGroup || getMealPeriod(entry.time);
+  entries.forEach((entry: FoodStorage) => {
+    const period: MealPeriod = entry.periodGroup as MealPeriod || getMealPeriod(entry.time);
     groups[period].entries.push(entry);
     groups[period].totalCalories += entry.calories;
     groups[period].totalProtein += entry.protein;
@@ -3598,18 +3599,25 @@ async function handleShareClick() {
     }
 
     // Convert entries to FoodStorage format
-    const foodEntries: FoodStorage[] = entries.map(entry => ({
-      name: entry.name,
-      grams: entry.grams,
-      calories: entry.calories,
-      protein: entry.protein,
-      fat: entry.fat,
-      carbs: entry.carbs,
-      fiber: entry.fiber,
-      time: entry.time,
-      date: entry.date,
-      alkaline: entry.alkaline,
-    }));
+    const foodEntries: FoodStorage[] = [];
+    entries.forEach(entry => {
+      const entryFor: FoodStorage = {
+        id: undefined,
+        name: entry.name,
+        grams: entry.grams,
+        calories: entry.calories,
+        protein: entry.protein,
+        fat: entry.fat,
+        carbs: entry.carbs,
+        fiber: entry.fiber,
+        time: entry.time,
+        date: entry.date,
+        alkaline: entry.alkaline,
+        periodGroup: null,
+      };
+  
+      foodEntries.push(entryFor);
+    });
 
     // Create shared day snapshot
     const sharedDay = await AppwriteDB.createSharedDay(selectedDate, foodEntries);
