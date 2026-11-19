@@ -1,5 +1,6 @@
-import { getDivById } from "./DomUtils";
+import { getDivById } from "./utils/domUtils";
 import { appState } from "./state";
+import { ExportDateValidation } from "./types";
 
 export const SECOND = 1000;
 export const QUICK_DELAY = 0.3 * SECOND;
@@ -108,3 +109,42 @@ const icons = {
 export function getIcon(category: keyof typeof icons) {
   return icons[category];
 }
+
+export function formatDateForInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function isDateInRangeValid(start: string, end: string): ExportDateValidation {
+  if (!start || !end) {
+    return { valid: false, message: 'Please select both start and end dates.' };
+  }
+
+  if (end < start) {
+    return { valid: false, message: 'End date must be the same or later than the start date.' };
+  }
+
+  const today = appState.todayDateString || formatDateForInput(new Date());
+  if (start > today || end > today) {
+    return { valid: false, message: 'Dates must be in the past or today.' };
+  }
+
+  return { valid: true, message: '' };
+}
+
+export function timeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+export function enforceIntegerInput(e: Event) {
+  const input = e.target as HTMLInputElement;
+  input.value = input.value.replace(/[^0-9]/g, '');
+}
+
+export const escapeHtml = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      

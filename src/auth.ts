@@ -1,4 +1,4 @@
-import { getDivById } from "./DomUtils";
+import { getDivById } from "./utils/domUtils";
 
 export function showAuthForms() {
   getDivById('auth-buttons').classList.remove('hidden');
