@@ -10,8 +10,6 @@ import {
   AlternativeResult,
   DailyTotalCalories,
   ExerciseEntry,
-  ExportDateValidation,
-  ExportInputDates,
   FoodItem,
   FoodStorage,
   MealGroup,
@@ -220,34 +218,6 @@ async function handleLogin(e: SubmitEvent) {
     }
   } finally {
     hideLoading();
-  }
-}
-
-async function processResponseItems<T, R>(
-  response: T[],
-  processItem: (item: T) => Promise<R>
-): Promise<R[]> {
-  
-  // Create promises for each item (but don't execute yet)
-  const promises = response.map(item => processItem(item));
-  
-  // Execute all promises concurrently and wait for completion
-  const results = await Promise.all(promises);
-  
-  return results;
-}
-
-async function fetchUserSettings(documentId: string): Promise<any> {
-  return AppwriteDB.deleteUserSettings(documentId);
-}
-
-async function handleBulkDelete(idsToDelete: string[]): Promise<void> {
-  try {
-    // This creates and executes all promises concurrently
-    const results = await processResponseItems(idsToDelete, fetchUserSettings);
-    console.debug('All requests completed:', results);
-  } catch (error) {
-    console.error('One or more requests failed:', error);
   }
 }
 

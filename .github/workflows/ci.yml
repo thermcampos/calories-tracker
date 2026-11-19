@@ -38,6 +38,8 @@ jobs:
     - name: Runs typescheck
       run: npx tsc --noEmit
 
+    - name: Run lint
+      run: npm run lint
+
     - name: Runs the quality gate script
       run: bash scripts/quality-gate.sh
-

@@ -42,4 +42,5 @@ tasks:
       - npm ci
       - npm run build
       - npx tsc --noEmit
+      - npm run lint
       - bash scripts/quality-gate.sh
